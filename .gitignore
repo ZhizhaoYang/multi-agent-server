@@ -9,11 +9,19 @@ wheels/
 # Virtual environments
 .venv
 .env
+venv/
+env/
 
 # IDE
-.idea
-.vscode
+.idea/
+.vscode/
+*.swp
+*.swo
 
-#lock files
+# Lock files
 *.lock
+
+# OS specific files
+.DS_Store
+Thumbs.db
 
