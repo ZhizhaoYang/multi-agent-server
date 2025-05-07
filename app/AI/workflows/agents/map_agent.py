@@ -35,7 +35,7 @@ async def initialize() -> None:
     if _client is None:
         _client = MultiServerMCPClient({"gaode_map": config_gaode})
         await _client.__aenter__()
-        _agent = create_react_agent(model, _client.get_tools())
+        _agent = create_react_agent(model, _client.get_tools(), prompt="You are a map searcher to help user research about the map/weather information.")
 
 async def get_map_agent() -> Any:
     """Get or create the map agent."""

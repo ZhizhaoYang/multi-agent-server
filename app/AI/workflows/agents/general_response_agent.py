@@ -11,11 +11,10 @@ llm = LLMFactory.create_llm(
     )
 )
 
-prompt = """{input}"""
+prompt = """Just directly response the user query via LLM"""
 
 general_response_agent = create_react_agent(
     llm,
     tools=[],
     prompt=prompt,
-
 )

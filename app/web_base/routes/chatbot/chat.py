@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from typing import TypedDict, List, Annotated
+from fastapi.responses import StreamingResponse
+from typing import List, Annotated, Any
 import operator
 from pydantic import BaseModel
 
@@ -13,32 +14,45 @@ class ChatRequest(BaseModel):
     # role: str = None
 
 
-class ChatResponse(ChatState):
+class ChatResponse(BaseModel):
     thread_id: str
     response: str
     error: Annotated[List[str], operator.add]
+    workflow_queue: Annotated[dict[str, Any] | Any, operator.add]
+
 
 
 router = APIRouter()
 
 
-@router.post("/chat", status_code=200)
-async def chat(request: ChatRequest):
+@router.get("/chat", status_code=200)
+async def chat(thread_id: str, user_input: str):
+    print("request params ==>", {"thread_id": thread_id, "user_input": user_input})
     service = ChatService()
 
-    try:
-        res = await service.generate_response(
-            user_input=request.user_input
-        )
+    return StreamingResponse(
+        service.generate_response(user_input),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
-        response = res['messages'][-1].content
+    # try:
+    #     res = await service.generate_response(
+    #         user_input=request.user_input
+    #     )
 
-        return ChatResponse(
-            thread_id=request.thread_id,
-            response=response,
-            error=[],
-            **res,
-        )
+    #     response = res['messages'][-1].content
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    #     return ChatResponse(
+    #         thread_id=request.thread_id,
+    #         response=response,
+    #         error=[],
+    #         workflow_queue=res,
+    #     )
+
+    # except Exception as e:
+    #     raise HTTPException(status_code=500, detail=str(e))

@@ -44,6 +44,10 @@ async def supervisor_node(state: ChatState) -> Command[NodeNames]:
         last_message = state["messages"][-1]
         if isinstance(last_message, AIMessage):
             return Command(
+                update={
+                    "nodes_history": [current_node],
+                    "nodes_count": state.get("nodes_count") + 1,
+                },
                 goto=END
             )
 
@@ -67,10 +71,7 @@ async def supervisor_node(state: ChatState) -> Command[NodeNames]:
 
         return Command(
             update={
-                "messages": [
-                    AIMessage(content=NodeNames.SUPERVISOR.value, name=NodeNames.SUPERVISOR.value)
-                ],
-                # "nodes_history": current_node,
+                "nodes_history": [current_node],
                 "nodes_count": state.get("nodes_count") + 1,
             },
             goto=END if goto == "END" else goto
@@ -80,5 +81,9 @@ async def supervisor_node(state: ChatState) -> Command[NodeNames]:
         logger.info("**** supervisor_node error ****")
         logger.error(e)
         return Command(
+            update={
+                "nodes_history": [current_node],
+                "nodes_count": state.get("nodes_count") + 1,
+            },
             goto=END
         )

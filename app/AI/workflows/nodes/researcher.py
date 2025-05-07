@@ -28,7 +28,7 @@ async def researcher_node(state: ChatState) -> Command[NodeNames]:
                 AIMessage(content=result["messages"]
                           [-1].content, name="researcher")
             ],
-            # "nodes_history": current_node,
+            "nodes_history": [current_node],
             "nodes_count": state.get("nodes_count") + 1,
         },
         goto=goto,

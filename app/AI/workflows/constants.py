@@ -6,6 +6,7 @@ class NodeNames(Enum):
     MAP_SEARCHER = "mapSearcher"
     GENERAL_RESPONSE = "generalResponse"
     SUPERVISOR = "supervisor"
+    SUMMARY = "summary"
 
     END = "END"
     START = "START"
