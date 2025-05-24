@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.12",
+    "ipython>=9.2.0",
     "langchain>=0.3.24",
     "langchain-community>=0.3.23",
     "langchain-core>=0.3.56",
@@ -13,5 +14,5 @@ dependencies = [
     "langchain-mcp-adapters>=0.0.9",
     "langgraph>=0.4.1",
     "pydantic>=2.11.4",
-    "uvicorn>=0.34.2",
+    "uvicorn[standard]>=0.34.2",
 ]

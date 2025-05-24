@@ -27,6 +27,7 @@ class LLMConfig(BaseModel):
 
 
 class LLMFactory:
+
     @classmethod
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
     def create_llm(cls, config: LLMConfig) -> ChatDeepSeek:
@@ -53,9 +54,6 @@ class LLMFactory:
                 print("**** create_llm error ****")
                 raise ValueError(f"Unsupported LLM provider: {provider}")
 
-            # print("llm ->", llm)
-            # res = llm.invoke("Hello, how are you?")
-            # print("res ->", res)
             return llm
 
         except Exception as e:
@@ -63,3 +61,5 @@ class LLMFactory:
             print(e)
             raise LLMInitializationError(f"Unexpected error during LLM initialization: {str(e)}") from e
 
+def get_llm(config: LLMConfig) -> ChatDeepSeek:
+    return LLMFactory.create_llm(config)

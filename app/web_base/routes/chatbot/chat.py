@@ -1,37 +1,34 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from typing import List, Annotated, Any
-import operator
-from pydantic import BaseModel
+import asyncio
+from langchain_core.runnables import Runnable
+import json
 
-from app.AI.workflows.models.chat_state import ChatState
+from app.web_base.models.API_models import APIRequest, APIResponse
 from app.web_base.services.chat_services import ChatService
-
-
-class ChatRequest(BaseModel):
-    thread_id: str
-    user_input: str
-    # role: str = None
-
-
-class ChatResponse(BaseModel):
-    thread_id: str
-    response: str
-    error: Annotated[List[str], operator.add]
-    workflow_queue: Annotated[dict[str, Any] | Any, operator.add]
-
-
+from app.utils.logger import logger
 
 router = APIRouter()
 
+class SSEMessage:
+    def __init__(self, data, event=None, id=None):
+        self.data = data
+        self.event = event
+        self.id = id
+
+    def __str__(self):
+        lines = []
+        if self.event: lines.append(f"event: {self.event}")
+        if self.id:    lines.append(f"id: {self.id}")
+        lines.append(f"data: {json.dumps(self.data)}")
+        return "\n".join(lines) + "\n\n"
 
 @router.get("/chat", status_code=200)
-async def chat(thread_id: str, user_input: str):
-    print("request params ==>", {"thread_id": thread_id, "user_input": user_input})
-    service = ChatService()
+async def chat_handler(request: APIRequest = Depends()):
+    chat_service = ChatService(request)
 
     return StreamingResponse(
-        service.generate_response(user_input),
+        chat_service.run_chat_service(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -39,20 +36,3 @@ async def chat(thread_id: str, user_input: str):
             "X-Accel-Buffering": "no"
         }
     )
-
-    # try:
-    #     res = await service.generate_response(
-    #         user_input=request.user_input
-    #     )
-
-    #     response = res['messages'][-1].content
-
-    #     return ChatResponse(
-    #         thread_id=request.thread_id,
-    #         response=response,
-    #         error=[],
-    #         workflow_queue=res,
-    #     )
-
-    # except Exception as e:
-    #     raise HTTPException(status_code=500, detail=str(e))

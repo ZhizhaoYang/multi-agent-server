@@ -2,13 +2,13 @@ from langgraph.types import Command
 from langchain_core.messages import AIMessage
 from typing import Literal, cast
 
-from app.AI.workflows.models.chat_state import ChatState
+from app.AI.workflows.models.chat_state import ChatWorkflowState
 from app.AI.workflows.agents.research_agent import research_agent
 from app.utils.logger import logger
 from app.AI.workflows.constants import NodeNames
 
 
-async def researcher_node(state: ChatState) -> Command[NodeNames]:
+async def researcher_node(state: ChatWorkflowState) -> Command[NodeNames]:
     current_node = NodeNames.RESEARCHER.value
 
     logger.info("**** researcher_node ****")
@@ -22,6 +22,10 @@ async def researcher_node(state: ChatState) -> Command[NodeNames]:
         logger.error(e)
         raise e
 
+    # Add this node to visited workers
+    visited_workers = set(state.visited_workers)
+    visited_workers.add(current_node)
+
     return Command(
         update={
             "messages": [
@@ -29,7 +33,7 @@ async def researcher_node(state: ChatState) -> Command[NodeNames]:
                           [-1].content, name="researcher")
             ],
             "nodes_history": [current_node],
-            "nodes_count": state.get("nodes_count") + 1,
+            "visited_workers": visited_workers,
         },
         goto=goto,
     )

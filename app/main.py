@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.web_base.routes.chatbot.chat import router as chat_router
+from app.web_base.routes.graph_routes import router as graph_router
 
 from app.web_base.config.settings import Settings
 
@@ -16,6 +17,7 @@ def create_app():
     )
 
     app.include_router(chat_router)
+    app.include_router(graph_router)
 
     app.add_middleware(
         CORSMiddleware,

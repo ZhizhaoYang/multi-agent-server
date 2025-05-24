@@ -5,8 +5,10 @@ class NodeNames(Enum):
     RESEARCHER = "researcher"
     MAP_SEARCHER = "mapSearcher"
     GENERAL_RESPONSE = "generalResponse"
-    SUPERVISOR = "supervisor"
-    SUMMARY = "summary"
+    MATH_EXPERT = "mathExpert"
+
+    AGGREGATOR = "aggregator"
 
     END = "END"
     START = "START"
+    SUPERVISOR = "supervisor"
