@@ -1,0 +1,14 @@
+{
+  "include": ["app", "multi-agent-server/app"],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    ".venv"
+  ],
+  "venvPath": "/Users/yangzhizhao/Desktop/%E6%88%91%E7%9A%84%E5%B7%A5%E5%9C%B0/my-AI/multi-agent-app",
+  "venv": ".venv",
+  "pythonVersion": "3.11",
+  "pythonPlatform": "All",
+  "typeCheckingMode": "basic",
+  "reportAttributeAccessIssue": "none"
+}

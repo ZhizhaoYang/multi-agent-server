@@ -4,8 +4,8 @@ import asyncio
 from langchain_core.runnables import Runnable
 import json
 
-from app.web_base.models.API_models import APIRequest, APIResponse
-from app.web_base.services.chat_services import ChatService
+from app.web_base.models.API_models import APIRequest
+from app.web_base.services.chat_service import ChatService
 from app.utils.logger import logger
 
 router = APIRouter()
@@ -23,16 +23,21 @@ class SSEMessage:
         lines.append(f"data: {json.dumps(self.data)}")
         return "\n".join(lines) + "\n\n"
 
-@router.get("/chat", status_code=200)
-async def chat_handler(request: APIRequest = Depends()):
-    chat_service = ChatService(request)
+# @router.get("/chat-stream", status_code=200)
+# async def chat_stream_handler(request: APIRequest = Depends()):
+#     chat_service = ChatService(request)
 
-    return StreamingResponse(
-        chat_service.run_chat_service(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
-    )
+#     return StreamingResponse(
+#         chat_service.run_chat_service(),
+#         media_type="text/event-stream",
+#         headers={
+#             "Cache-Control": "no-cache",
+#             "Connection": "keep-alive",
+#             "X-Accel-Buffering": "no"
+#         }
+#     )
+
+@router.get("/chat-test", status_code=200)
+async def chat_test_handler(request: APIRequest = Depends()):
+    chat_service = ChatService(request)
+    return await chat_service.run()
