@@ -1,11 +1,16 @@
 from .Chat import ChatState, ChatError
 from .Nodes import NodeNames_Dept, NodeNames_HQ
-from .Assessment import LLMAssessmentOutput, Task
+from .Assessment import LLMAssessmentOutput, Task, CompletedTask, TaskStatus
+
 __all__ = [
     "ChatState",
     "ChatError",
+
     "NodeNames_Dept",
     "NodeNames_HQ",
+
     "LLMAssessmentOutput",
-    "Task"
+    "Task",
+    "CompletedTask",
+    "TaskStatus"
 ]

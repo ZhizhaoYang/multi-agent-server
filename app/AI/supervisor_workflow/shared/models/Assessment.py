@@ -1,6 +1,13 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List
 from app.AI.supervisor_workflow.shared.models.Nodes import NodeNames_Dept
+from enum import Enum
+
+class TaskStatus(str, Enum):
+    PENDING = "pending"
+    SUCCESS = "success"
+    ERROR = "error"
+    UNKNOWN = "unknown"
 
 class Task(BaseModel):
     task_id: str = Field(..., description="A unique identifier for the task (e.g., 'task_001').")
@@ -9,6 +16,12 @@ class Task(BaseModel):
     dependent_tasks: List[str] = Field(default_factory=list, description="Specifies dependencies (IDs of other tasks).")
     expected_output: str = Field(..., description="Describes what the successful completion of this task should produce.")
     suggested_department: NodeNames_Dept = Field(..., description="The department that is best suited to handle this task.")
+
+class CompletedTask(BaseModel):
+    task_id: str = Field(..., description="A unique identifier for the task (e.g., 'task_001').")
+    status: TaskStatus = Field(..., description="The status of the task.")
+    from_department: NodeNames_Dept = Field(..., description="The department that completed the task.")
+    department_output: str = Field(..., description="The output of the task.")
 
 
 class LLMAssessmentOutput(BaseModel):

@@ -1,15 +1,18 @@
-from typing import Dict, Optional, List, Tuple, Iterator
+from typing import Dict, Optional, List, Tuple, Iterator, Any, Set
 from datetime import datetime
 from langgraph.types import Command, Send
 from langgraph.graph import END
 
-from app.AI.supervisor_workflow.shared.models import ChatState, ChatError
+from app.AI.supervisor_workflow.shared.models import ChatState
 from app.AI.supervisor_workflow.shared.models.Assessment import LLMAssessmentOutput, Task
 from app.AI.supervisor_workflow.shared.models.Nodes import NodeNames_HQ, NodeNames_Dept
 from app.utils.logger import logger
+from app.AI.supervisor_workflow.shared.models.Chat import SupervisorStatus, SupervisorState
+from app.AI.supervisor_workflow.departments.models.dept_input import DeptInput
 
 
 CURRENT_NODE_NAME = NodeNames_HQ.SUPERVISOR.value
+
 
 def _assessment_report_is_valid(assessment_report: Optional[LLMAssessmentOutput]) -> bool:
     return assessment_report is not None and \
@@ -27,72 +30,134 @@ def _read_assessment_report(assessment_report: LLMAssessmentOutput) -> Tuple[boo
     Returns a boolean indicating success and a list of sorted tasks.
     """
     if not _assessment_report_is_valid(assessment_report):
-        logger.warning(f"Assessment report failed validation: {assessment_report.model_dump_json(indent=2) if assessment_report else 'None'}")
+        logger.warning(
+            f"Assessment report failed validation: {assessment_report.model_dump_json(indent=2) if assessment_report else 'None'}")
         return False, []
 
-    # If _assessment_report_is_valid has passed, we know:
-    # - assessment_report.tasks is a non-empty list.
-    # - Each item in assessment_report.tasks is an instance of Task.
-    # - Each Task instance has a 'priority' attribute which is an int > 0.
-    # Therefore, direct sorting should be safe.
     try:
-        # assessment_report.tasks directly gives List[Task]
-        # Pydantic would have already validated 'priority' as an int during LLMAssessmentOutput parsing.
         tasks = assessment_report.tasks.copy()
         sorted_tasks = sorted(tasks, key=lambda task: task.priority)
         return True, sorted_tasks
     except Exception as e:
-        # This is a fallback for truly unexpected issues during sorting,
-        # e.g., if a malformed Task object somehow bypassed Pydantic validation,
-        # or if an unexpected exception occurs within the sort itself.
-        logger.error(f"Unexpected error while sorting tasks in _read_assessment_report: {e}. Report: {assessment_report.model_dump_json(indent=2)}")
+        logger.error(
+            f"Unexpected error while sorting tasks in _read_assessment_report: {e}. Report: {assessment_report.model_dump_json(indent=2)}")
         return False, []
 
 
-def supervisor_node(state: ChatState) -> Iterator[Send | Command] | Command:
-    """
-    Manages dispatching tasks to department nodes based on assessment_report
-    and waits for their completion before proceeding.
-    """
-    logger.info(f"!! Supervisor node state: {state} !!")
-    new_updates: Dict = {}
+def handle_task_dispatch(state: ChatState) -> Command:
+    new_updates: Dict[str, Any] = {}
 
-    try:
-        # report does not exist
-        if state.assessment_report is None:
-            print(f"!! Assessment report is None !!")
-            new_updates["errors"] = [
-                ChatError(
-                    node_name=CURRENT_NODE_NAME,
-                    error=f"Assessment report is invalid: {state.assessment_report}",
-                    type="invalid_assessment_report",
-                    timestamp=datetime.now().isoformat()
-                )
-            ]
-            return Command(update=new_updates, goto=END)
-
-        is_report_valid, tasks = _read_assessment_report(state.assessment_report)
-        if not is_report_valid:
-            print(f"!! Assessment report is invalid !!")
-            new_updates["errors"] = [
-                ChatError(
-                    node_name=CURRENT_NODE_NAME,
-                    error=f"Assessment report is invalid: {state.assessment_report}",
-                    type="invalid_assessment_report",
-                    timestamp=datetime.now().isoformat()
-                )
-            ]
-            return Command(update=new_updates, goto=END)
-
-        new_updates["dispatched_tasks"] = tasks
-        logger.info(f"!! dispatched_tasks: {type(tasks)} \n{tasks} !!")
-
-        return Command(
-            update=new_updates,
-            goto=[Send(task.suggested_department.value, task) for task in tasks]
+    # Check if assessment report exists (using new state composition)
+    if state.assessment.assessment_report is None:
+        logger.error(f"!! Assessment report is None !!")
+        new_error = state.build_error(
+            Exception("Assessment report does not exist"),
+            CURRENT_NODE_NAME
         )
 
-    except Exception as e:
-        print(f"!! Supervisor node Exception: {e} !!")
-        new_updates["errors"] = [state.build_error(e, CURRENT_NODE_NAME)]
+        new_updates["errors"] = [new_error]
+
         return Command(update=new_updates, goto=END)
+
+    # Read and validate assessment report
+    is_report_valid, tasks = _read_assessment_report(state.assessment.assessment_report)
+    logger.info(f"!! Supervisor node is_report_valid: {is_report_valid} !!")
+
+    if not is_report_valid:
+        new_error = state.build_error(
+            Exception(f"Assessment report is invalid: {state.assessment.assessment_report}"),
+            CURRENT_NODE_NAME
+        )
+        new_updates["errors"] = [new_error]
+
+        return Command(update=new_updates, goto=END)
+
+    logger.info(f"!! Supervisor node handle_task_dispatch ---")
+    print(type(tasks))
+    print(tasks)
+    # Update supervisor state with task dispatch
+    new_updates["supervisor"] = SupervisorState(
+        dispatched_tasks=tasks,
+        dispatched_task_ids={task.task_id for task in tasks},
+        supervisor_status=SupervisorStatus.PENDING,
+        completed_tasks=[],
+        completed_task_ids=set()
+    )
+
+    print("before send to dept")
+    print(new_updates)
+
+    return Command(
+        update=new_updates,
+        graph=CURRENT_NODE_NAME,
+        goto=[Send(task.suggested_department.value, DeptInput(
+            task=task,
+            supervisor=new_updates["supervisor"]
+        )) for task in tasks]
+    )
+
+
+def handle_task_completion(state: ChatState) -> Command | None:
+    new_updates: Dict[str, Any] = {}
+
+    logger.info(f"!! Supervisor node handle_task_completion ---")
+
+    # check if supervisor is pending, if pending, just return None, keep waiting
+    if state.supervisor.supervisor_status != SupervisorStatus.PENDING:
+        print("111")
+        return None
+
+    # check if all tasks are completed, else return None, keep waiting
+    if state.supervisor.dispatched_task_ids - state.supervisor.completed_task_ids != set():
+        print("222")
+        return None
+
+    print("333")
+    # Update supervisor state to mark completion phase
+    new_updates["supervisor"] = state.supervisor.model_copy(update={
+        "supervisor_status": SupervisorStatus.COMPLETED
+    })
+    # Route to aggregator node instead of END
+    return Command(
+        update=new_updates,
+        goto=NodeNames_HQ.AGGREGATOR.value
+    )
+
+
+def supervisor_node(state: ChatState) -> Iterator[Send | Command] | Command | None:
+    """
+    Enhanced supervisor node with state composition pattern.
+
+    Manages dispatching tasks to department nodes based on assessment_report
+    and waits for their completion before routing to aggregator.
+    """
+    print(" --- supervisor_node ---")
+    print(state)
+
+    # Handle different supervisor states
+    match state.supervisor.supervisor_status:
+        case SupervisorStatus.IDLE:
+            print("IDLE")
+            return handle_task_dispatch(state)
+
+        case SupervisorStatus.PENDING:
+            print("PENDING")
+            return handle_task_completion(state)
+
+        case SupervisorStatus.COMPLETED:
+            print("COMPLETED")
+            new_updates = state.model_copy(update={
+                "supervisor": SupervisorState(
+                    supervisor_status=SupervisorStatus.IDLE,
+                    dispatched_tasks=[],
+                    dispatched_task_ids=set(),
+                    completed_tasks=[],
+                    completed_task_ids=set()
+                )
+            })
+            print(new_updates)
+            return Command(update=new_updates, goto=NodeNames_HQ.SUPERVISOR.value)
+
+        case _:
+            logger.info(f"!! Supervisor in unknown state: {state.supervisor.supervisor_status} !!")
+            return None

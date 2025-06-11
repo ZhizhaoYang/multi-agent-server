@@ -1,18 +1,17 @@
 from langgraph.types import Command
 from langgraph.graph import StateGraph, START, END
 
+from app.AI.supervisor_workflow.departments.models.dept_input import DeptInput
 
-from app.AI.supervisor_workflow.shared.models.Assessment import Task
-
-def math_expert_node(task: Task) -> Command:
-    print(f"*** Math department subgraph received task: {task} ***")
+def math_expert_node(dept_input: DeptInput) -> Command:
+    print(f"*** Math department subgraph received task: {dept_input.task} ***")
 
     return Command(
         update={},
         goto=Command.PARENT
     )
 
-_builder = StateGraph(Task)
+_builder = StateGraph(DeptInput)
 
 _builder.add_node(
     "math_expert",

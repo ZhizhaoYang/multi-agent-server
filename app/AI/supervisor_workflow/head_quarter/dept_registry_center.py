@@ -25,11 +25,11 @@ _INITIAL_REGISTERED_DEPARTMENTS: Dict[str, Dept_Info] = {
         description="Manages web interactions, including browsing, online data retrieval, and internet-based research, some up-to-date information is required.",
         node_func=web_dept_subgraph
     ),
-    NodeNames_Dept.MATH_DEPT.value: Dept_Info(
-        department_name=NodeNames_Dept.MATH_DEPT.value,
-        description="Specializes in mathematical computations, algebraic problem-solving, and quantitative analysis.",
-        node_func=math_dept_subgraph
-    ),
+    # NodeNames_Dept.MATH_DEPT.value: Dept_Info(
+    #     department_name=NodeNames_Dept.MATH_DEPT.value,
+    #     description="Specializes in mathematical computations, algebraic problem-solving, and quantitative analysis.",
+    #     node_func=math_dept_subgraph
+    # ),
     NodeNames_Dept.GENERAL_KNOWLEDGE.value: Dept_Info(
         department_name=NodeNames_Dept.GENERAL_KNOWLEDGE.value,
         description="When the user's query is not related to the specific domain of the other departments, this department will be used to answer the question. It probably will query a Large Language Model directly to answer the question.",
