@@ -5,7 +5,7 @@ from langchain_core.messages import BaseMessage
 from app.AI.supervisor_workflow.shared.models.Assessment import Task, CompletedTask, TaskStatus
 from app.AI.supervisor_workflow.shared.models.Nodes import NodeNames_Dept
 from app.AI.supervisor_workflow.shared.models.Chat import SupervisorState
-from app.AI.supervisor_workflow.departments.web_dept.agents.web_searcher_agent import web_searcher_agent
+from app.AI.supervisor_workflow.departments.web_dept.agents.web_searcher_agent import create_web_searcher_agent
 from app.AI.supervisor_workflow.departments.utils.errors import node_error_handler
 from app.AI.supervisor_workflow.departments.models.dept_input import DeptInput
 from app.AI.supervisor_workflow.shared.utils.logUtils import print_current_node
@@ -13,8 +13,18 @@ from app.AI.supervisor_workflow.shared.utils.logUtils import print_current_node
 CURRENT_NODE_NAME = NodeNames_Dept.WEB_DEPT.value
 
 async def _call_web_research_agent(task: Task) -> dict[str, Any]:
-    """Calls the web searcher agent and returns the response, raising an error if the response is empty."""
-    agent_response = await web_searcher_agent.ainvoke({"description": task.description, "expected_output": task.expected_output})
+    """Creates a web searcher agent with bound prompt variables and calls it."""
+    # Create agent with variables already bound in the prompt (no weird state coupling!)
+    web_searcher_agent = create_web_searcher_agent(
+        description=task.description,
+        expected_output=task.expected_output
+    )
+
+    # Call the agent with clean message-only state
+    agent_response = await web_searcher_agent.ainvoke({
+        "messages": [("human", f"Please help me with: {task.description}")]
+    })
+
     if not agent_response:
         raise ValueError("LLM call returned no response.")
     return agent_response
@@ -23,6 +33,7 @@ async def _call_web_research_agent(task: Task) -> dict[str, Any]:
 async def web_searcher_node(dept_input: DeptInput):
     """
     Node that performs a web search based on the task description and expected output.
+    Creates agent dynamically with bound prompt variables (clean, no state coupling).
     """
     print_current_node(CURRENT_NODE_NAME)
 
@@ -40,12 +51,11 @@ async def web_searcher_node(dept_input: DeptInput):
         department_output=str(final_message.content) if isinstance(final_message, BaseMessage) else str(final_message)
     )
 
-            # Use operator annotations: operator.add for list, operator.or_ for set
     return Command(
         update={
             "supervisor": {
-                "completed_tasks": [completed_task],        # operator.add will append to existing list
-                "completed_task_ids": {task.task_id}        # operator.or_ will union with existing set
+                "completed_tasks": [completed_task],        # upsert_by_task_id will update/add by task_id
+                "completed_task_ids": {task.task_id}        # operator.or_ will merge with existing
             }
         },
         goto=Command.PARENT

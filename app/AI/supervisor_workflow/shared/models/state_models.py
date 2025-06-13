@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Set, Dict, Any
+from typing import List, Set, Dict, Any, Union
 from uuid import uuid4
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
@@ -10,6 +10,7 @@ import operator
 from app.AI.supervisor_workflow.shared.models.Assessment import Task, CompletedTask, LLMAssessmentOutput
 from app.AI.supervisor_workflow.shared.models.error_models import ChatError
 from app.AI.supervisor_workflow.shared.models.enums import SupervisorStatus
+from app.AI.supervisor_workflow.shared.utils.stateUtils import create_state_merger, upsert_by_task_id
 
 
 class AssessmentState(BaseModel):
@@ -41,15 +42,18 @@ class SupervisorState(BaseModel):
         description="Set of dispatched task IDs for quick lookup"
     )
 
-    completed_tasks: Annotated[List[CompletedTask], operator.add] = Field(
+    completed_tasks: Annotated[List[CompletedTask], upsert_by_task_id] = Field(
         default_factory=list,
-        description="Tasks that have been completed by departments"
+        description="Tasks that have been completed by departments (with upsert behavior by task_id)"
     )
 
     completed_task_ids: Annotated[Set[str], operator.or_] = Field(
         default_factory=set,
         description="Set of completed task IDs for quick lookup"
     )
+
+
+
 
 
 class WorkflowState(BaseModel):
@@ -62,7 +66,7 @@ class WorkflowState(BaseModel):
     # processing_metadata: Dict[str, Any] = Field(
     #     default_factory=dict,
     #     description="Metadata for debugging and performance monitoring"
-    # )
+    #         )
 
 
 class ChatState(BaseModel):
@@ -94,8 +98,8 @@ class ChatState(BaseModel):
     # Assessment-specific state
     assessment: AssessmentState = Field(default_factory=lambda: AssessmentState())
 
-    # Supervisor-specific state
-    supervisor: SupervisorState = Field(default_factory=lambda: SupervisorState())
+    # Supervisor-specific state - with custom reducer for concurrent updates
+    supervisor: Annotated[SupervisorState, create_state_merger(SupervisorState)] = Field(default_factory=lambda: SupervisorState())
 
     # Workflow-specific state for debugging and internal processing
     workflow: WorkflowState = Field(default_factory=lambda: WorkflowState())
@@ -112,4 +116,7 @@ class ChatState(BaseModel):
             error_message=str(error),
             type=type(error).__name__,
             timestamp=datetime.now(timezone.utc).isoformat()
-        )
+                )
+
+
+

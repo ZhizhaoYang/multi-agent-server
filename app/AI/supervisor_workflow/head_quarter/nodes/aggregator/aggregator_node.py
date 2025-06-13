@@ -60,37 +60,25 @@ Department Response: {completed_task.department_output if completed_task.departm
     # Define newline for f-string compatibility
     newline = '\n'
 
-    prompt = f"""You are an AI assistant that synthesizes results from multiple specialized departments to provide a comprehensive answer to the user's question.
+    prompt = f"""You are a helpful AI assistant. The user asked you a question and you have gathered the necessary information to respond.
 
-ORIGINAL USER QUESTION:
+USER'S QUESTION:
 {user_query}
-{assessment_summary}
-COMPLETED TASKS RESULTS:
-{newline.join(completed_tasks_summary) if completed_tasks_summary else "No tasks were completed."}
 
-CRITICAL INSTRUCTIONS:
+AVAILABLE INFORMATION:
+{newline.join(completed_tasks_summary) if completed_tasks_summary else "No additional information available."}
 
-1. CONTENT ANALYSIS: Carefully examine each department response. Some responses marked as "SUCCESS" might actually contain error messages (like "API key invalid", "rate limit exceeded", "service unavailable", etc.). Identify which responses are genuinely helpful vs. which contain error content.
+INSTRUCTIONS:
+1. Respond directly and naturally to the user's question as if you are a single AI assistant
+2. Use the available information to provide a helpful answer
+3. DO NOT mention any internal processes, tasks, departments, or technical details
+4. DO NOT reference "completing tasks" or "processing" or "synthesis"
+5. If the information contains obvious error messages (like API errors), ignore those parts
+6. For simple questions like greetings, respond naturally without over-explaining
+7. Make your response feel conversational and human-like
+8. Focus only on what the user actually wants to know
 
-2. SYNTHESIS APPROACH:
-   - Use only genuinely successful responses to answer the user's question
-   - If you detect error content in any response, acknowledge it briefly but don't let it dominate your answer
-   - Integrate multiple successful responses logically
-   - If all responses contain errors, be honest about the limitations while providing what value you can
-
-3. RESPONSE QUALITY:
-   - Address the user's original question directly and completely
-   - Provide actionable insights based on successful results
-   - Use a professional but conversational tone
-   - Structure your response clearly with proper organization
-   - If information is incomplete, be transparent but focus on what was successfully obtained
-
-4. ERROR HANDLING:
-   - Briefly mention if some departments encountered issues (without going into technical details)
-   - Focus on the successful results and what they tell us about the user's question
-   - Provide the best possible answer given the available successful information
-
-Generate a final response that completely answers the user's question based on the genuinely successful task results:"""
+Provide a direct, natural response to the user:"""
 
     return prompt
 

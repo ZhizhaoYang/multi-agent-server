@@ -7,10 +7,9 @@ API_KEY = os.getenv("TAVILY_API_KEY")
 tavily_tool = TavilySearchResults(
     api_key=API_KEY,
     max_results=5,
-
 )
 
 @tool
-def tavily_search_tool(query: str) -> str:
+async def tavily_search_tool(query: str) -> str:
     """Searches the web for the given query using Tavily Search API."""
-    return tavily_tool.invoke({"query": query})
+    return await tavily_tool.ainvoke({"query": query})

@@ -38,12 +38,12 @@ async def math_dept_node(dept_input: DeptInput) -> Command:
         department_output=str(final_message.content) if isinstance(final_message, BaseMessage) else str(final_message)
     )
 
-            # Use operator annotations: operator.add for list, operator.or_ for set
+    # Update only the operator-annotated fields to avoid concurrent key conflicts
     return Command(
         update={
             "supervisor": {
-                "completed_tasks": [completed_task],        # operator.add will append to existing list
-                "completed_task_ids": {task.task_id}        # operator.or_ will union with existing set
+                "completed_tasks": [completed_task],        # upsert_by_task_id will update/add by task_id
+                "completed_task_ids": {task.task_id}        # operator.or_ will merge with existing
             }
         },
         goto=Command.PARENT

@@ -75,13 +75,10 @@ def handle_task_dispatch(state: ChatState) -> Command:
     logger.info(f"!! Supervisor node handle_task_dispatch ---")
     print(type(tasks))
     print(tasks)
-    # Update supervisor state with task dispatch
     new_updates["supervisor"] = SupervisorState(
         dispatched_tasks=tasks,
         dispatched_task_ids={task.task_id for task in tasks},
-        supervisor_status=SupervisorStatus.PENDING,
-        completed_tasks=[],
-        completed_task_ids=set()
+        supervisor_status=SupervisorStatus.PENDING
     )
 
     print("before send to dept")

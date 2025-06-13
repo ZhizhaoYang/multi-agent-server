@@ -3,13 +3,11 @@ from datetime import datetime
 from typing import Any, Callable, Coroutine
 from langgraph.types import Command
 
-from app.AI.supervisor_workflow.shared.models.Assessment import Task, CompletedTask, TaskStatus
+from app.AI.supervisor_workflow.shared.models.Assessment import CompletedTask, TaskStatus
 from app.AI.supervisor_workflow.shared.models.Nodes import NodeNames_Dept
-from app.AI.supervisor_workflow.shared.models.Chat import ChatError, SupervisorState
+from app.AI.supervisor_workflow.shared.models.Chat import ChatError
 from app.utils.logger import logger
-from app.AI.supervisor_workflow.departments.web_dept.agents.web_searcher_agent import web_searcher_agent
 from app.AI.supervisor_workflow.departments.models.dept_input import DeptInput
-
 
 def node_error_handler(from_department: NodeNames_Dept):
     """A decorator to handle exceptions in graph nodes, logging errors and returning a standard error response."""
@@ -36,12 +34,12 @@ def node_error_handler(from_department: NodeNames_Dept):
                     department_output=f"An unexpected error occurred: {e}",
                 )
 
-                                                # Use operator annotations: operator.add for list, operator.or_ for set
+                # Update only the operator-annotated fields to avoid concurrent key conflicts
                 return Command(
                     update={
                         "supervisor": {
-                            "completed_tasks": [completed_task],        # operator.add will append to existing list
-                            "completed_task_ids": {dept_input.task.task_id}        # operator.or_ will union with existing set
+                            "completed_tasks": [completed_task],        # upsert_by_task_id will update/add by task_id
+                            "completed_task_ids": {dept_input.task.task_id}        # operator.or_ will merge with existing
                         },
                         "errors": [new_error]
                     },
