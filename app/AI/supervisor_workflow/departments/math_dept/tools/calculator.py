@@ -1,7 +1,7 @@
 """A calculator tool that can be used by an agent to evaluate mathematical expressions."""
 from typing import Annotated
-import numexpr
-
+from simpleeval import simple_eval
+from app.utils.logger import logger
 from langchain_core.tools import tool
 
 @tool
@@ -11,14 +11,15 @@ def calculator(
     """
     A calculator that can evaluate mathematical expressions.
     Handles basic arithmetic operations (+, -, *, /), exponentiation (**), and parentheses.
-    For example, '2 + 3 * (4 / 2)' = 7
+    For example, '2 + 3 * (4 / 2)' = 8.0
     """
+    logger.info(f"-- calculator -- evaluating: {expression}")
     try:
-        # Using numexpr for safe evaluation of numerical expressions.
-        # .item() is used to convert the numpy type to a standard Python type.
-        result = numexpr.evaluate(expression).item()
+        # Using simpleeval for safe evaluation of numerical expressions
+        result = simple_eval(expression)
+        logger.info(f"The result of the expression '{expression}' is {result}.")
         return f"The result of the expression '{expression}' is {result}."
-    except KeyError as e:
-        return f"Failed to evaluate the expression '{expression}'. An unknown variable or function was used: {e}"
     except Exception as e:
-        return f"Failed to evaluate the expression '{expression}'. Error: {e}"
+        error_msg = f"Failed to evaluate the expression '{expression}'. Error: {e}"
+        logger.error(error_msg)
+        return error_msg
