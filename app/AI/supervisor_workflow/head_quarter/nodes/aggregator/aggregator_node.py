@@ -14,11 +14,12 @@ from app.utils.logger import logger
 llm = LLMFactory.create_llm(
     LLMConfig(
         provider=LLMProviders.DEEPSEEK.value,
-        model="deepseek-reasoner",
+        model="deepseek-chat",
         temperature=1.0,
     )
 )
 CURRENT_NODE_NAME = NodeNames_HQ.AGGREGATOR.value
+
 
 def create_aggregation_prompt(state: ChatState) -> str:
     """
@@ -119,7 +120,7 @@ async def aggregator_node(state: ChatState) -> Command:
         prompt = create_aggregation_prompt(state)
         logger.info(f"!! Aggregation prompt created !!")
 
-                # Call LLM for final response generation
+        # Call LLM for final response generation
         final_response = await call_llm_for_aggregation(llm, prompt)
 
         # Update the final output
