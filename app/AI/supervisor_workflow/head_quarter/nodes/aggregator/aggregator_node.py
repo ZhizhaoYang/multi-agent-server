@@ -53,10 +53,10 @@ Department Response: {completed_task.department_output if completed_task.departm
     # Get original user query
     user_query = state.user_query
 
-    # Get assessment summary if available
-    assessment_summary = ""
-    if state.assessment.assessment_summary:
-        assessment_summary = f"\nASSESSMENT SUMMARY:\n{state.assessment.assessment_summary}\n"
+    # # Get assessment summary if available
+    # assessment_summary = ""
+    # if state.assessment.assessment_summary:
+    #     assessment_summary = f"\nASSESSMENT SUMMARY:\n{state.assessment.assessment_summary}\n"
 
     # Define newline for f-string compatibility
     newline = '\n'

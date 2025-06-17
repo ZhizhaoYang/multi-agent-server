@@ -32,7 +32,7 @@ class SupervisorState(BaseModel):
         description="Current status of the supervisor workflow"
     )
 
-    dispatched_tasks: Annotated[List[Task], operator.add] = Field(
+    dispatched_tasks: Annotated[List[Task], upsert_by_task_id] = Field(
         default_factory=list,
         description="Tasks that have been dispatched to departments"
     )

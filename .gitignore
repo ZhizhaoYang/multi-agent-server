@@ -9,6 +9,10 @@ wheels/
 # Virtual environments
 .venv
 .env
+.env*
+# .env.production
+# .env.local
+# .env.staging
 venv/
 env/
 
@@ -27,4 +31,18 @@ Thumbs.db
 
 # langgraph
 .langgraph_api
+
+# Production deployment files
+.env.production*
+.env.staging*
+docker-compose.override.yml
+.secrets/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
 

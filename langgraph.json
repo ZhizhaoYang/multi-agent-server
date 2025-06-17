@@ -3,5 +3,6 @@
   "graphs": {
     "app": "./app/AI/supervisor_workflow/head_quarter/main_graph.py:main_graph"
   },
-  "env": ".env"
+  "env": ".env",
+  "python_version": "3.11"
 }
