@@ -1,5 +1,3 @@
-from typing import Annotated
-from pydantic import BaseModel
 from operator import add, or_
 
 
@@ -106,3 +104,6 @@ def create_state_merger(model_class):
 
     return merge_states
 
+def latest_value_reducer(left: str, right: str) -> str:
+    """Reducer that takes the latest (rightmost) value for concurrent updates."""
+    return right if right else left

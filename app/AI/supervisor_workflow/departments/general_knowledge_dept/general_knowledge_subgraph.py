@@ -13,4 +13,5 @@ _builder.add_node(
 _builder.add_edge(START, "general_knowledge")
 _builder.add_edge("general_knowledge", END)
 
+# No checkpointer needed - conversation history comes from main graph via DeptInput.messages
 general_knowledge_subgraph = _builder.compile()

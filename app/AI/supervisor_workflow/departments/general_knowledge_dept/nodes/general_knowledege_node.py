@@ -1,6 +1,6 @@
 from langgraph.types import Command
 
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AnyMessage
 
 from app.AI.supervisor_workflow.shared.models import CompletedTask, TaskStatus, NodeNames_Dept
 from app.AI.supervisor_workflow.shared.models.Chat import SupervisorState
@@ -35,10 +35,17 @@ async def _call_general_knowledge_llm(dept_input: DeptInput) -> str:
         )
 
         user_message = f"Task Description: {task.description}\n\nExpected Output Explanation: {task.expected_output}"
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_message)
-        ]
+
+        # Build messages list with conversation history
+        messages: list[AnyMessage] = [SystemMessage(content=system_prompt)]
+
+        # Add conversation history for context
+        # if dept_input.messages:
+        #     # Add recent conversation messages for context
+        #     messages.extend(dept_input.messages[-5:])  # Keep last 5 messages for context
+
+        # Add current task message
+        # messages.append(HumanMessage(content=user_message))
 
         # Call the LLM and get the response
         agent_response = await llm.ainvoke(messages)
@@ -53,7 +60,6 @@ async def _call_general_knowledge_llm(dept_input: DeptInput) -> str:
 @node_error_handler(from_department=NodeNames_Dept.GENERAL_KNOWLEDGE)
 async def general_knowledge_node(dept_input: DeptInput) -> Command:
     print_current_node(CURRENT_NODE_NAME)
-    print(dept_input)
     task = dept_input.task
     supervisor = dept_input.supervisor
 
@@ -76,8 +82,6 @@ async def general_knowledge_node(dept_input: DeptInput) -> Command:
         }
     }
 
-    print(" --- before gl to sp ---")
-    print(new_update)
     return Command(
         update=new_update,
         goto=Command.PARENT

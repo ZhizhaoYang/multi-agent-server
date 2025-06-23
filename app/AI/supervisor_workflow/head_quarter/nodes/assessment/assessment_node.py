@@ -1,8 +1,10 @@
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 from langgraph.types import Command
 from langgraph.graph import END
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import AnyMessage, HumanMessage
+import uuid
 
 from app.AI.supervisor_workflow.shared.models import ChatState
 from app.AI.supervisor_workflow.head_quarter.nodes.assessment.prompts import sys_prompt_for_assessment
@@ -10,6 +12,7 @@ from app.utils.logger import logger
 from app.AI.supervisor_workflow.shared.utils.logUtils import print_current_node
 from app.AI.core.llm import LLMFactory, LLMConfig, LLMProviders
 from app.AI.supervisor_workflow.shared.models.Nodes import NodeNames_HQ
+from app.AI.supervisor_workflow.shared.models.Chat import SupervisorStatus
 from app.AI.supervisor_workflow.shared.models.Assessment import LLMAssessmentOutput
 from app.AI.supervisor_workflow.head_quarter.dept_registry_center import department_registry
 
@@ -38,17 +41,41 @@ llm = LLMFactory.create_llm(
     )
 )
 
+def format_conversation_history(messages: List[AnyMessage]) -> str:
+    """Format conversation history for the assessment prompt"""
+    if not messages:
+        return "No previous conversation."
+
+    # Format recent messages for context (last 10 messages)
+    recent_messages = messages[-10:] if len(messages) > 10 else messages
+    formatted_history = []
+
+    for msg in recent_messages:
+        if hasattr(msg, 'type'):
+            msg_type = msg.type
+        else:
+            msg_type = type(msg).__name__.replace('Message', '').lower()
+
+        content = str(msg.content) if hasattr(msg, 'content') else str(msg)
+        formatted_history.append(f"{msg_type.capitalize()}: {content}")
+
+    return "\n".join(formatted_history)
+
 async def _call_llm_for_assessment(
     llm: BaseChatModel,
     system_prompt_template: SystemMessagePromptTemplate,
     user_query: Optional[str],
     available_departments_str: str,
+    conversation_history: str = "",
 ) -> LLMAssessmentOutput:
     try:
-        chat_prompt = ChatPromptTemplate.from_messages([system_prompt_template])
+        chat_prompt = ChatPromptTemplate.from_messages([
+            system_prompt_template
+        ])
         formatted_messages = chat_prompt.format_messages(
             user_query=user_query,
-            available_departments=available_departments_str
+            available_departments=available_departments_str,
+            conversation_history=conversation_history
         )
         response_data = await llm.ainvoke(formatted_messages)
         raw_content = response_data.content
@@ -66,7 +93,6 @@ async def _call_llm_for_assessment(
     except Exception as e:
         raise e
 
-
 async def assessment_node(state: ChatState) -> Command:
     """
     Enhanced assessment node with state composition and thread context awareness.
@@ -78,15 +104,23 @@ async def assessment_node(state: ChatState) -> Command:
     4. Maintains conversation continuity across thread interactions
     """
     print_current_node(CURRENT_NODE_NAME)
-    new_updates = {}
+    logger.info(f"!! Assessment node state: {state.model_dump_json(indent=2)} !!")
 
+    # full_ctx_messages = state.messages + [HumanMessage(content=state.user_query, id=str(uuid.uuid4()))]
+    new_updates: Dict[str, Any] = {
+        # "messages": full_ctx_messages
+    }
 
     try:
+        # Format conversation history for assessment context
+        conversation_history = format_conversation_history(state.messages)
+
         llm_assessment_output = await _call_llm_for_assessment(
             llm=llm,
             system_prompt_template=sys_prompt_for_assessment,
             user_query=state.user_query,
             available_departments_str=AVAILABLE_DEPARTMENTS_STRING,
+            conversation_history=conversation_history,
         )
 
         logger.info(f"!! Assessment output: {llm_assessment_output.model_dump_json(indent=2)} !!")
@@ -96,15 +130,6 @@ async def assessment_node(state: ChatState) -> Command:
             "assessment_report": llm_assessment_output,
             "assessment_summary": llm_assessment_output.assessment_summary
         })
-
-        # Update workflow metadata
-        # new_updates["workflow"] = state.workflow.model_copy(update={
-        #     "processing_metadata": {
-        #         **state.workflow.processing_metadata,
-        #         "assessment_completed_at": datetime.now(timezone.utc).isoformat(),
-        #         "thread_message_count": len(state.messages)
-        #     }
-        # })
 
         return Command(
             update=new_updates,

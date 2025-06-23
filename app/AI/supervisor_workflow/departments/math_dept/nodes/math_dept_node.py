@@ -1,6 +1,6 @@
-from typing import Any
+from typing import Any, List, Optional
 from langgraph.types import Command
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, AnyMessage, HumanMessage
 
 from app.AI.supervisor_workflow.shared.utils.logUtils import print_current_node
 from app.AI.supervisor_workflow.shared.models.Assessment import Task, CompletedTask, TaskStatus
@@ -9,7 +9,7 @@ from app.AI.supervisor_workflow.departments.models.dept_input import DeptInput
 from app.AI.supervisor_workflow.departments.math_dept.agents.math_expert import create_math_expert_agent
 from app.AI.supervisor_workflow.departments.utils.errors import node_error_handler
 
-async def _call_math_expert_agent(task: Task) -> dict[str, Any]:
+async def _call_math_expert_agent(task: Task, conversation_messages: List[AnyMessage] = []) -> dict[str, Any]:
     """Creates a math expert agent with bound prompt variables and calls it."""
     # Create agent with variables already bound in the prompt (no weird state coupling!)
     math_expert_agent = create_math_expert_agent(
@@ -17,9 +17,18 @@ async def _call_math_expert_agent(task: Task) -> dict[str, Any]:
         expected_output=task.expected_output
     )
 
-    # Call the agent with clean message-only state
+    # Prepare messages with conversation history context
+    messages = []
+    if conversation_messages:
+        # Add conversation history for context
+        messages.extend(conversation_messages[-5:])  # Keep last 5 messages for context
+
+    # Add current task message
+    messages.append(HumanMessage(f"Please solve this math problem: {task.description}"))
+
+    # Call the agent with conversation context
     agent_response = await math_expert_agent.ainvoke({
-        "messages": [("human", f"Please solve this math problem: {task.description}")]
+        "messages": messages
     })
 
     if not agent_response:
@@ -34,7 +43,7 @@ async def math_dept_node(dept_input: DeptInput) -> Command:
     print_current_node(NodeNames_Dept.MATH_DEPT.value)
     task = dept_input.task
 
-    llm_response = await _call_math_expert_agent(task)
+    llm_response = await _call_math_expert_agent(task, dept_input.messages)
 
     final_message = llm_response.get("messages", [])[-1] if isinstance(llm_response,
                                                                        dict) and llm_response.get("messages") else llm_response

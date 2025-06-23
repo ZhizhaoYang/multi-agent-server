@@ -11,10 +11,12 @@ UVICORN_PORT := 8000
 # Phony targets
 .PHONY: help run install test lint format clean docker-build docker-run deploy
 
-dev:
+debug: ## Start LangGraph development server with configurable environment
+	source .venv/bin/activate && \
 	langgraph dev
 
 run: ## Start development server with hot reload
+	source .venv/bin/activate && \
 	uvicorn app.main:app \
 		--reload \
 		--port ${UVICORN_PORT} \

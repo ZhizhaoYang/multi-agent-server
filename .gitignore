@@ -46,3 +46,6 @@ logs/
 tmp/
 temp/
 
+# db files
+db/
+

@@ -13,9 +13,11 @@ class NodeNames_Dept(Enum):
 
 @unique
 class NodeNames_HQ(Enum):
+    INITIALIZER = "Initializer"
     SUPERVISOR = "Supervisor"
     ASSESSMENT = "Assessment"
     AGGREGATOR = "Aggregator"
+    FINAL_RESPONSE = "FinalResponse"
 
 
 

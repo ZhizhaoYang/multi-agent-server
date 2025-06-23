@@ -1,8 +1,9 @@
 from typing import Dict, Any
-from datetime import datetime
 from langgraph.types import Command
-from langgraph.graph import END
 from langchain_core.messages import AIMessage
+import uuid
+from langchain_core.language_models import BaseChatModel
+from langgraph.config import get_stream_writer
 
 from app.AI.core.llm import LLMFactory, LLMConfig, LLMProviders
 from app.AI.supervisor_workflow.shared.models import ChatState
@@ -48,17 +49,9 @@ Department: {completed_task.from_department.value}
 Status: {completed_task.status.value}
 Department Response: {completed_task.department_output if completed_task.department_output else 'No response provided'}
 """
-            completed_tasks_summary.append(task_info.strip())
+    completed_tasks_summary.append(task_info.strip())
 
-    # Get original user query
     user_query = state.user_query
-
-    # # Get assessment summary if available
-    # assessment_summary = ""
-    # if state.assessment.assessment_summary:
-    #     assessment_summary = f"\nASSESSMENT SUMMARY:\n{state.assessment.assessment_summary}\n"
-
-    # Define newline for f-string compatibility
     newline = '\n'
 
     prompt = f"""You are a helpful AI assistant. The user asked you a question and you have gathered the necessary information to respond.
@@ -84,13 +77,21 @@ Provide a direct, natural response to the user:"""
     return prompt
 
 
-async def call_llm_for_aggregation(llm, prompt: str) -> str:
+async def call_llm_for_aggregation(llm: BaseChatModel, prompt: str) -> str:
     """
     Calls the LLM to generate the final aggregated response.
     """
     try:
-        response = await llm.ainvoke(prompt)
-        return response.content if hasattr(response, 'content') else str(response)
+        response_chunks = ""
+        writer = get_stream_writer()
+
+        async for chunk in llm.astream(prompt):
+            writer({"final_output": chunk.content})
+            if hasattr(chunk, 'content') and chunk.content:
+                chunk_text = str(chunk.content) if chunk.content else ""
+                response_chunks = response_chunks + chunk_text
+
+        return response_chunks
     except Exception as e:
         logger.error(f"LLM call failed in aggregator: {e}")
         # Fallback response if LLM fails
@@ -127,7 +128,7 @@ async def aggregator_node(state: ChatState) -> Command:
         new_updates["final_output"] = final_response
 
         # Add the final response to messages
-        new_updates["messages"] = [AIMessage(content=final_response)]
+        new_updates["messages"] = [AIMessage(content=final_response, id=str(uuid.uuid4()))]
 
         # Update supervisor status to completed
         new_updates["supervisor"] = state.supervisor.model_copy(update={
@@ -135,10 +136,11 @@ async def aggregator_node(state: ChatState) -> Command:
         })
 
         logger.info(f"!! Aggregation completed successfully !!")
+        logger.info(f"!!  !!")
 
         return Command(
             update=new_updates,
-            goto=END
+            goto=NodeNames_HQ.FINAL_RESPONSE.value
         )
 
     except Exception as e:
@@ -151,12 +153,13 @@ async def aggregator_node(state: ChatState) -> Command:
 
         new_updates["final_output"] = fallback_response
         new_updates["errors"] = [new_error]
-        new_updates["messages"] = [AIMessage(content=fallback_response)]
+        new_updates["messages"] = [AIMessage(content=fallback_response, id=str(uuid.uuid4()))]
         new_updates["supervisor"] = state.supervisor.model_copy(update={
             "supervisor_status": SupervisorStatus.FAILED
         })
 
+
         return Command(
             update=new_updates,
-            goto=END
+            goto=NodeNames_HQ.FINAL_RESPONSE.value
         )

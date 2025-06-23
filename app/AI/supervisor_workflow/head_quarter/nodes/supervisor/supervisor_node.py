@@ -61,7 +61,6 @@ def handle_task_dispatch(state: ChatState) -> Command:
 
     # Read and validate assessment report
     is_report_valid, tasks = _read_assessment_report(state.assessment.assessment_report)
-    logger.info(f"!! Supervisor node is_report_valid: {is_report_valid} !!")
 
     if not is_report_valid:
         new_error = state.build_error(
@@ -73,23 +72,21 @@ def handle_task_dispatch(state: ChatState) -> Command:
         return Command(update=new_updates, goto=END)
 
     logger.info(f"!! Supervisor node handle_task_dispatch ---")
-    print(type(tasks))
-    print(tasks)
     new_updates["supervisor"] = SupervisorState(
         dispatched_tasks=tasks,
         dispatched_task_ids={task.task_id for task in tasks},
         supervisor_status=SupervisorStatus.PENDING
     )
 
-    print("before send to dept")
-    print(new_updates)
-
     return Command(
         update=new_updates,
         graph=CURRENT_NODE_NAME,
         goto=[Send(task.suggested_department.value, DeptInput(
             task=task,
-            supervisor=new_updates["supervisor"]
+            supervisor=new_updates["supervisor"],
+            messages=state.messages,  # Pass conversation history
+            thread_id=getattr(state, 'thread_id', ''),  # Pass thread context
+            user_query=state.user_query  # Pass current user query
         )) for task in tasks]
     )
 
@@ -101,15 +98,12 @@ def handle_task_completion(state: ChatState) -> Command | None:
 
     # check if supervisor is pending, if pending, just return None, keep waiting
     if state.supervisor.supervisor_status != SupervisorStatus.PENDING:
-        print("111")
         return None
 
     # check if all tasks are completed, else return None, keep waiting
     if state.supervisor.dispatched_task_ids - state.supervisor.completed_task_ids != set():
-        print("222")
         return None
 
-    print("333")
     # Update supervisor state to mark completion phase
     new_updates["supervisor"] = state.supervisor.model_copy(update={
         "supervisor_status": SupervisorStatus.COMPLETED
@@ -129,20 +123,16 @@ def supervisor_node(state: ChatState) -> Iterator[Send | Command] | Command | No
     and waits for their completion before routing to aggregator.
     """
     print(" --- supervisor_node ---")
-    print(state)
 
     # Handle different supervisor states
     match state.supervisor.supervisor_status:
         case SupervisorStatus.IDLE:
-            print("IDLE")
             return handle_task_dispatch(state)
 
         case SupervisorStatus.PENDING:
-            print("PENDING")
             return handle_task_completion(state)
 
         case SupervisorStatus.COMPLETED:
-            print("COMPLETED")
             new_updates = state.model_copy(update={
                 "supervisor": SupervisorState(
                     supervisor_status=SupervisorStatus.IDLE,
@@ -152,7 +142,7 @@ def supervisor_node(state: ChatState) -> Iterator[Send | Command] | Command | No
                     completed_task_ids=set()
                 )
             })
-            print(new_updates)
+
             return Command(update=new_updates, goto=NodeNames_HQ.SUPERVISOR.value)
 
         case _:
