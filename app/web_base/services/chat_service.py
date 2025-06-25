@@ -20,8 +20,10 @@ class ChatService:
             thread_id=self.thread_id,
         )
 
-    def handle_messages_format(self, chunk_text: str, modeTypeName: str):
-        data = {"chunk": chunk_text, "type": modeTypeName}
+    def handle_messages_format(self, chunk_text: str, chunk_type: str, **kwargs):
+        data = {"chunk": chunk_text, "type": chunk_type}
+        # Add additional data for thought messages
+        data.update(kwargs)
         final_Data = f"data: {json.dumps(data)}\n\n"
         return final_Data
 
@@ -62,12 +64,41 @@ class ChatService:
                 stream_type = chunk[0]  # stream mode name
                 stream_content = chunk[1]  # stream content
 
-                # hanlde messages mode
+                # handle custom stream mode
                 if stream_type == "custom":
-                    final_output_str = stream_content['final_output']
-                    if final_output_str:
-                        result = self.handle_messages_format(final_output_str, 'final_output')
+                    # Handle different types of custom streams
+                    message_type = stream_content.get('type', 'final_output')
+
+                    if message_type == 'thought':
+                        # Handle character-by-character thought stream
+                        thought_content = stream_content.get('thought_content', '')
+                        if thought_content:  # Only stream if there's actual content (not empty)
+                            result = self.handle_messages_format(
+                                thought_content,
+                                'thought',
+                                source=stream_content.get('source', ''),
+                                segment_id=stream_content.get('segment_id', 0),  # Character position
+                                timestamp=stream_content.get('timestamp', '')
+                            )
+                            yield result
+
+                    elif message_type == 'thought_complete':
+                        # Handle thought completion marker
+                        result = self.handle_messages_format(
+                            "",  # Empty content for completion
+                            'thought_complete',
+                            source=stream_content.get('source', ''),
+                            segment_id=stream_content.get('segment_id', 0),  # Total character count
+                            total_length=stream_content.get('total_length', 0)
+                        )
                         yield result
+
+                    else:
+                        # Handle regular final_output stream
+                        final_output_str = stream_content.get('final_output', '')
+                        if final_output_str:
+                            result = self.handle_messages_format(final_output_str, 'final_output')
+                            yield result
 
         # After streaming completes, get the final complete state
         final_state = await main_graph.aget_state(config)
@@ -75,4 +106,4 @@ class ChatService:
             "thread_id": self.thread_id,
             "final_output": final_state.values.get("final_output", ""),
         }
-        yield self.handle_messages_format(json.dumps(result), 'done')
+        yield f"data: {json.dumps(result)}\n\n"

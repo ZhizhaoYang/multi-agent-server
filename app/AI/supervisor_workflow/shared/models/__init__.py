@@ -1,6 +1,12 @@
 from .Chat import ChatState, ChatError
 from .Nodes import NodeNames_Dept, NodeNames_HQ
 from .Assessment import LLMAssessmentOutput, Task, CompletedTask, TaskStatus
+from .thought_chain_models import (
+    ThoughtType,
+    ThoughtSegment,
+    THOUGHT_MARKERS,
+    create_thinking_prompt,
+)
 
 __all__ = [
     "ChatState",
@@ -12,5 +18,11 @@ __all__ = [
     "LLMAssessmentOutput",
     "Task",
     "CompletedTask",
-    "TaskStatus"
+    "TaskStatus",
+
+    # ThoughtChain models and utilities
+    "ThoughtType",
+    "ThoughtSegment",
+    "THOUGHT_MARKERS",
+    "create_thinking_prompt",
 ]

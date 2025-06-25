@@ -1,9 +1,11 @@
 from pydantic import BaseModel, Field
-from typing import List, Set
+from typing import List, Set, Dict, Any
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from typing import Annotated, Optional
 from datetime import datetime, timezone
+from enum import Enum
+from uuid import uuid4
 import operator
 
 from app.AI.supervisor_workflow.shared.utils.stateUtils import latest_value_reducer
@@ -11,6 +13,14 @@ from app.AI.supervisor_workflow.shared.models.Assessment import Task, CompletedT
 from app.AI.supervisor_workflow.shared.models.error_models import ChatError
 from app.AI.supervisor_workflow.shared.models.enums import SupervisorStatus
 from app.AI.supervisor_workflow.shared.utils.stateUtils import create_state_merger, upsert_by_task_id
+
+
+# ThoughtChain models have been moved to thought_chain_models.py for better organization
+from .thought_chain_models import ThoughtSegment
+
+# =============================================================================
+# CORE STATE MODELS
+# =============================================================================
 
 class AssessmentState(BaseModel):
     """State for assembly workflow and task management"""
@@ -95,6 +105,12 @@ class ChatState(BaseModel):
 
     # Workflow-specific state for debugging and internal processing
     workflow: WorkflowState = Field(default_factory=lambda: WorkflowState())
+
+            # ThoughtChain state - streaming thoughts during processing
+    thinking_enabled: bool = Field(default=True, description="Whether thinking mode is enabled")
+    thought_segments: List[ThoughtSegment] = Field(default_factory=list, description="All thought segments generated")
+    last_streamed_thought_id: Optional[str] = Field(default=None, description="ID of last streamed thought")
+    streamed_thought_ids: Set[str] = Field(default_factory=set, description="Set of already streamed thought IDs")
 
     # Convenience methods
     def add_error(self, error: Exception, node_name: str):

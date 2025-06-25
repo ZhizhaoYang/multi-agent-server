@@ -13,7 +13,6 @@ def calculator(
     Handles basic arithmetic operations (+, -, *, /), exponentiation (**), and parentheses.
     For example, '2 + 3 * (4 / 2)' = 8.0
     """
-    logger.info(f"-- calculator -- evaluating: {expression}")
     try:
         # Using simpleeval for safe evaluation of numerical expressions
         result = simple_eval(expression)

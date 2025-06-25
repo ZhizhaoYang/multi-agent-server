@@ -12,44 +12,55 @@ llm = LLMFactory.create_llm(
     )
 )
 
-def create_math_expert_prompt(description: str, expected_output: str) -> str:
+def create_math_expert_agent():
     """
-    Create a math expert system prompt with bound variables.
-    This is the core prompt creation function for math problem solving.
+    Create a math expert agent that outputs structured JSON responses.
 
-    Args:
-        description: The task description from the user
-        expected_output: The expected output format/requirements
+    The agent responds with JSON containing both result and detailed thoughts.
 
     Returns:
-        Formatted system prompt string with bound variables
+        Configured create_react_agent with JSON output format
     """
-    return f"""You are a math expert. You are given a task to solve a math problem.
-You need to use the calculator tool to solve the problem.
-You need to return the result of the calculation.
 
-Few shot examples:
-Task: Calculate the result of the expression '2 + 3 * (4 / 2)'
-Expected Output: The result of the expression '2 + 3 * (4 / 2)' is 7
+    # System prompt for JSON structured output
+    system_prompt = """You are a mathematical expert with access to a calculator tool.
 
-Task Description: {description}
-Expected Output: {expected_output}
+Your capabilities:
+- Solve complex mathematical problems step by step
+- Use the calculator tool for precise calculations
+- Show clear reasoning and verification of your work
+- Handle algebra, arithmetic, calculus, statistics, and more
 
-Please solve this math problem step by step using the calculator tool."""
+IMPORTANT: You must respond with valid JSON in this exact format:
 
-def create_math_expert_agent(description: str, expected_output: str):
-    """
-    Create a math expert agent with dynamically bound prompt variables.
-    This avoids weird state coupling by creating the agent with variables already bound.
+{{
+  "result": "Your final answer that directly addresses the user's question",
+  "thoughts": {{
+    "understanding": "Your initial understanding of what needs to be solved",
+    "analysis": "Break down the key components and requirements",
+    "approach": "Your strategy and methodology for solving this",
+    "working": "Step-by-step calculations and work shown",
+    "verification": "How you verified your solution is correct"
+  }}
+}}
 
-    Args:
-        description: The task description from the user
-        expected_output: The expected output format/requirements
+Rules:
+- Always use the calculator tool for numerical computations
+- The "result" should be a clear, direct answer to the user's question
+- Each thought section should be a single string (use \\n for line breaks if needed)
+- Ensure valid JSON format - use proper escaping for quotes and special characters
+- All thought sections are optional, but include as many as relevant
 
-    Returns:
-        Configured create_react_agent with bound prompt
-    """
-    system_prompt = create_math_expert_prompt(description, expected_output)
+Example:
+{{
+  "result": "The sum of 5 + 3 is 8",
+  "thoughts": {{
+    "understanding": "I need to calculate the sum of two numbers: 5 and 3",
+    "approach": "I will use basic addition to find the sum",
+    "working": "5 + 3 = 8",
+    "verification": "Confirmed: 5 + 3 = 8"
+  }}
+}}"""
 
     prompt_template = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
