@@ -3,8 +3,10 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 from langgraph.types import Command
 from langgraph.graph import END
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AnyMessage, HumanMessage
-import uuid
+from langchain_core.messages import AnyMessage
+import asyncio
+from langchain_core.runnables import RunnableConfig
+# Removed StreamWriter imports - now using queue-based streaming
 
 from app.AI.supervisor_workflow.shared.models import ChatState
 from app.AI.supervisor_workflow.head_quarter.nodes.assessment.prompts import sys_prompt_for_assessment
@@ -12,7 +14,6 @@ from app.utils.logger import logger
 from app.AI.supervisor_workflow.shared.utils.logUtils import print_current_node
 from app.AI.core.llm import LLMFactory, LLMConfig, LLMProviders
 from app.AI.supervisor_workflow.shared.models.Nodes import NodeNames_HQ
-from app.AI.supervisor_workflow.shared.models.Chat import SupervisorStatus
 from app.AI.supervisor_workflow.shared.models.Assessment import LLMAssessmentOutput
 from app.AI.supervisor_workflow.head_quarter.dept_registry_center import department_registry
 
@@ -77,6 +78,8 @@ async def _call_llm_for_assessment(
             available_departments=available_departments_str,
             conversation_history=conversation_history
         )
+
+
         response_data = await llm.ainvoke(formatted_messages)
         raw_content = response_data.content
 
@@ -93,7 +96,7 @@ async def _call_llm_for_assessment(
     except Exception as e:
         raise e
 
-async def assessment_node(state: ChatState) -> Command:
+async def assessment_node(state: ChatState, config: RunnableConfig) -> Command:
     """
     Enhanced assessment node with state composition and thread context awareness.
 
@@ -106,9 +109,19 @@ async def assessment_node(state: ChatState) -> Command:
     print_current_node(CURRENT_NODE_NAME)
     logger.info(f"!! Assessment node state: {state.model_dump_json(indent=2)} !!")
 
+    publisher = state.get_stream_publisher()
+    if publisher is not None:
+        await publisher.publish_thought(
+            content="Generating assessment report...",
+            source="AssessmentNode",
+            segment_id=1
+        )
+        await asyncio.sleep(0.01)
+
     # full_ctx_messages = state.messages + [HumanMessage(content=state.user_query, id=str(uuid.uuid4()))]
     new_updates: Dict[str, Any] = {
         # "messages": full_ctx_messages
+        # "stream_writer": stream_writer
     }
 
     try:
@@ -125,11 +138,30 @@ async def assessment_node(state: ChatState) -> Command:
 
         logger.info(f"!! Assessment output: {llm_assessment_output.model_dump_json(indent=2)} !!")
 
-        # Update supervisor state with assessment
+
+        if publisher is not None:
+            for i, char in enumerate(llm_assessment_output.assessment_summary):
+                await publisher.publish_thought(
+                    content=char,
+                    source="AssessmentNode",
+                    segment_id=i
+                )
+                await asyncio.sleep(0.01)
+
+            await asyncio.sleep(0.05)
+            await publisher.publish_thought_complete(
+                source="AssessmentNode",
+                segment_id=len(llm_assessment_output.assessment_summary)
+            )
+
+
+
         new_updates["assessment"] = state.assessment.model_copy(update={
             "assessment_report": llm_assessment_output,
-            "assessment_summary": llm_assessment_output.assessment_summary
+            "assessment_summary": llm_assessment_output.assessment_summary,
         })
+
+        # Note: stream_queue_id is already part of the state, no need to update
 
         return Command(
             update=new_updates,
@@ -145,7 +177,8 @@ async def assessment_node(state: ChatState) -> Command:
 
         # Update supervisor state to indicate failure
         new_updates["assessment"] = state.assessment.model_copy(update={
-            "assessment_report": None
+            "assessment_report": None,
+
         })
 
         return Command(

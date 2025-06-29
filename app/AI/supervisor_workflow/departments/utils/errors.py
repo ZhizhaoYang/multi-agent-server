@@ -13,9 +13,9 @@ def node_error_handler(from_department: NodeNames_Dept):
     """A decorator to handle exceptions in graph nodes, logging errors and returning a standard error response."""
     def decorator(func: Callable[[DeptInput], Coroutine[Any, Any, Any]]):
         @functools.wraps(func)
-        async def wrapper(dept_input: DeptInput, *args, **kwargs) -> Any:
+        async def wrapper(state: DeptInput, *args, **kwargs) -> Any:
             try:
-                return await func(dept_input, *args, **kwargs)
+                return await func(state, *args, **kwargs)
             except Exception as e:
                 logger.error(f"!! Error in node {func.__name__} for department {from_department} !!: {e}", exc_info=True)
 
@@ -28,7 +28,7 @@ def node_error_handler(from_department: NodeNames_Dept):
                 )
 
                 completed_task = CompletedTask(
-                    task_id=dept_input.task.task_id,
+                    task_id=state.task.task_id,
                     from_department=from_department,
                     status=TaskStatus.ERROR,
                     department_output=f"An unexpected error occurred: {e}",
@@ -39,7 +39,7 @@ def node_error_handler(from_department: NodeNames_Dept):
                     update={
                         "supervisor": {
                             "completed_tasks": [completed_task],        # upsert_by_task_id will update/add by task_id
-                            "completed_task_ids": {dept_input.task.task_id}        # operator.or_ will merge with existing
+                            "completed_task_ids": {state.task.task_id}        # operator.or_ will merge with existing
                         },
                         "errors": [new_error]
                     },

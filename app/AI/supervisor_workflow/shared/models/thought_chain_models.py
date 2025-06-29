@@ -33,38 +33,3 @@ class ThoughtSegment(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
-# Simple thought markers
-THOUGHT_MARKERS = {
-    "THOUGHT:": ThoughtType.REASONING,
-    "ANALYSIS:": ThoughtType.ANALYSIS,
-    "APPROACH:": ThoughtType.PLANNING,
-    "WORKING:": ThoughtType.WORKING,
-    "CHECKING:": ThoughtType.CHECKING,
-    "RESULT:": ThoughtType.RESULT
-}
-
-
-def create_thinking_prompt(task_description: str, context: str = "") -> str:
-    """Simple thinking prompt that works reliably"""
-
-    prompt = f"""You are solving: {task_description}
-
-Think step by step and show your reasoning. Use these markers:
-
-THOUGHT: What I need to understand about this problem
-ANALYSIS: Breaking down the key parts
-APPROACH: My plan to solve this
-WORKING: Step-by-step calculations or work
-CHECKING: Verifying my solution
-RESULT: Final answer only
-
-Each marker should start on a new line. Write actual thoughts, not placeholders.
-
-{context}
-
-Start thinking:
-
-THOUGHT:"""
-
-    return prompt
-

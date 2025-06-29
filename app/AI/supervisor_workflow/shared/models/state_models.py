@@ -1,11 +1,10 @@
 from pydantic import BaseModel, Field
-from typing import List, Set, Dict, Any
+from typing import List, Set
 from langchain_core.messages import AnyMessage
+from langgraph.types import StreamWriter
 from langgraph.graph.message import add_messages
 from typing import Annotated, Optional
 from datetime import datetime, timezone
-from enum import Enum
-from uuid import uuid4
 import operator
 
 from app.AI.supervisor_workflow.shared.utils.stateUtils import latest_value_reducer
@@ -96,6 +95,11 @@ class ChatState(BaseModel):
         description="Errors that occurred during processing"
     )
 
+    stream_queue_id: Optional[str] = Field(
+        default=None,
+        description="ID of the stream queue for this chat session"
+    )
+
     # Assessment-specific state
     assessment: AssessmentState = Field(default_factory=lambda: AssessmentState())
 
@@ -125,3 +129,8 @@ class ChatState(BaseModel):
             type=type(error).__name__,
             timestamp=datetime.now(timezone.utc).isoformat()
         )
+
+    def get_stream_publisher(self):
+        """Get a stream publisher for this chat session"""
+        from app.AI.supervisor_workflow.shared.models.stream_models import create_stream_publisher
+        return create_stream_publisher(self.stream_queue_id)

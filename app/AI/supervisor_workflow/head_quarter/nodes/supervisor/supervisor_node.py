@@ -1,7 +1,8 @@
-from typing import Dict, Optional, List, Tuple, Iterator, Any, Set
-from datetime import datetime
+from typing import Dict, Optional, List, Tuple, Iterator, Any
 from langgraph.types import Command, Send
 from langgraph.graph import END
+from langchain_core.runnables import RunnableConfig
+# Removed StreamWriter imports - now using queue-based streaming
 
 from app.AI.supervisor_workflow.shared.models import ChatState
 from app.AI.supervisor_workflow.shared.models.Assessment import LLMAssessmentOutput, Task
@@ -12,7 +13,6 @@ from app.AI.supervisor_workflow.departments.models.dept_input import DeptInput
 
 
 CURRENT_NODE_NAME = NodeNames_HQ.SUPERVISOR.value
-
 
 def _assessment_report_is_valid(assessment_report: Optional[LLMAssessmentOutput]) -> bool:
     return assessment_report is not None and \
@@ -86,8 +86,9 @@ def handle_task_dispatch(state: ChatState) -> Command:
             supervisor=new_updates["supervisor"],
             messages=state.messages,  # Pass conversation history
             thread_id=getattr(state, 'thread_id', ''),  # Pass thread context
-            user_query=state.user_query  # Pass current user query
-        )) for task in tasks]
+            user_query=state.user_query,  # Pass current user query
+            stream_queue_id=state.stream_queue_id  # Pass queue ID for streaming
+        )) for task in tasks],
     )
 
 
@@ -122,8 +123,6 @@ def supervisor_node(state: ChatState) -> Iterator[Send | Command] | Command | No
     Manages dispatching tasks to department nodes based on assessment_report
     and waits for their completion before routing to aggregator.
     """
-    print(" --- supervisor_node ---")
-
     # Handle different supervisor states
     match state.supervisor.supervisor_status:
         case SupervisorStatus.IDLE:
