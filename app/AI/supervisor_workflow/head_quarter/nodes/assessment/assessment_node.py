@@ -113,7 +113,7 @@ async def assessment_node(state: ChatState, config: RunnableConfig) -> Command:
     if publisher is not None:
         await publisher.publish_thought(
             content="Generating assessment report...",
-            source="AssessmentNode",
+            source=NodeNames_HQ.ASSESSMENT.value,
             segment_id=1
         )
         await asyncio.sleep(0.01)
@@ -143,18 +143,16 @@ async def assessment_node(state: ChatState, config: RunnableConfig) -> Command:
             for i, char in enumerate(llm_assessment_output.assessment_summary):
                 await publisher.publish_thought(
                     content=char,
-                    source="AssessmentNode",
+                    source=NodeNames_HQ.ASSESSMENT.value,
                     segment_id=i
                 )
                 await asyncio.sleep(0.01)
 
             await asyncio.sleep(0.05)
             await publisher.publish_thought_complete(
-                source="AssessmentNode",
+                source=NodeNames_HQ.ASSESSMENT.value,
                 segment_id=len(llm_assessment_output.assessment_summary)
             )
-
-
 
         new_updates["assessment"] = state.assessment.model_copy(update={
             "assessment_report": llm_assessment_output,

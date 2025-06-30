@@ -91,8 +91,8 @@ class StreamQueueManager:
         queue = self.get_queue(queue_id)
         if queue:
             await queue.put(event)
-        else:
-            logger.warning(f"Queue {queue_id} not found when trying to put event")
+        # else:
+        #     logger.warning(f"Queue {queue_id} not found when trying to put event")
 
     async def get_event(self, queue_id: str, timeout: float = 1.0) -> Optional[dict]:
         """

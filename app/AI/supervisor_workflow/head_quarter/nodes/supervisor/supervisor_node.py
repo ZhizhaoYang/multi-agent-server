@@ -2,6 +2,7 @@ from typing import Dict, Optional, List, Tuple, Iterator, Any
 from langgraph.types import Command, Send
 from langgraph.graph import END
 from langchain_core.runnables import RunnableConfig
+import asyncio
 # Removed StreamWriter imports - now using queue-based streaming
 
 from app.AI.supervisor_workflow.shared.models import ChatState
@@ -44,7 +45,49 @@ def _read_assessment_report(assessment_report: LLMAssessmentOutput) -> Tuple[boo
         return False, []
 
 
-def handle_task_dispatch(state: ChatState) -> Command:
+async def stream_task_dispatch(tasks: List[Task], publisher):
+    """Stream the task dispatching information to the frontend"""
+    try:
+        if publisher is not None and tasks:
+            # Send initial signal
+            await publisher.publish_thought(
+                content="Planning tasks...",
+                source="Supervisor",
+                segment_id=1
+            )
+            await asyncio.sleep(0.01)
+
+            # Build the complete task list output
+            task_lines = []
+            for i, task in enumerate(tasks, 1):
+                task_line = f"Task {i}: {task.description}"
+                task_lines.append(task_line)
+
+            # Combine all tasks into a single formatted output
+            full_output = "\n".join(task_lines)
+
+            # Stream the complete task list character by character
+            for char_position, char in enumerate(full_output, 1):
+                await publisher.publish_thought(
+                    content=char,
+                    source="Supervisor",
+                    segment_id=char_position
+                )
+                await asyncio.sleep(0.01)
+
+            # Send completion marker
+            await publisher.publish_thought_complete(
+                source="Supervisor",
+                segment_id=len(full_output),
+                total_length=len(full_output)
+            )
+
+            # logger.info(f"Streamed task dispatch: {len(tasks)} tasks, {len(full_output)} characters total")
+    except Exception as e:
+        logger.error(f"Warning: Could not stream task dispatch: {e}")
+
+
+async def handle_task_dispatch(state: ChatState) -> Command:
     new_updates: Dict[str, Any] = {}
 
     # Check if assessment report exists (using new state composition)
@@ -71,7 +114,12 @@ def handle_task_dispatch(state: ChatState) -> Command:
 
         return Command(update=new_updates, goto=END)
 
-    logger.info(f"!! Supervisor node handle_task_dispatch ---")
+    # logger.info(f"!! Supervisor node handle_task_dispatch ---")
+
+    # Get publisher and stream the tasks being dispatched
+    publisher = state.get_stream_publisher()
+    await stream_task_dispatch(tasks, publisher)
+
     new_updates["supervisor"] = SupervisorState(
         dispatched_tasks=tasks,
         dispatched_task_ids={task.task_id for task in tasks},
@@ -116,17 +164,17 @@ def handle_task_completion(state: ChatState) -> Command | None:
     )
 
 
-def supervisor_node(state: ChatState) -> Iterator[Send | Command] | Command | None:
+async def supervisor_node(state: ChatState) -> Iterator[Send | Command] | Command | None:
     """
-    Enhanced supervisor node with state composition pattern.
+    Enhanced supervisor node with state composition pattern and streaming.
 
-    Manages dispatching tasks to department nodes based on assessment_report
-    and waits for their completion before routing to aggregator.
+    Manages dispatching tasks to department nodes based on assessment_report,
+    streams task information to frontend, and waits for completion before routing to aggregator.
     """
     # Handle different supervisor states
     match state.supervisor.supervisor_status:
         case SupervisorStatus.IDLE:
-            return handle_task_dispatch(state)
+            return await handle_task_dispatch(state)
 
         case SupervisorStatus.PENDING:
             return handle_task_completion(state)

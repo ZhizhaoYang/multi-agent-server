@@ -29,6 +29,20 @@ class StreamEventConverter:
                 source=event.source,
                 segment_id=event.segment_id,
                 total_length=event.metadata.get('total_length', 0)
+            ),
+            "final_output": lambda: cls.format_sse_message(
+                event.content,
+                'final_output',
+                source=event.source,
+                segment_id=event.segment_id,
+                timestamp=event.timestamp.isoformat() if hasattr(event.timestamp, 'isoformat') else str(event.timestamp)
+            ),
+            "final_output_complete": lambda: cls.format_sse_message(
+                "",
+                'final_output_complete',
+                source=event.source,
+                segment_id=event.segment_id,
+                total_length=event.metadata.get('total_length', 0)
             )
         }
 

@@ -2,14 +2,15 @@ from typing import Dict, Any
 from langgraph.types import Command
 from langchain_core.messages import AIMessage
 import uuid
+import asyncio
 from langchain_core.language_models import BaseChatModel
-from langgraph.config import get_stream_writer
 
 from app.AI.core.llm import LLMFactory, LLMConfig, LLMProviders
 from app.AI.supervisor_workflow.shared.models import ChatState
 from app.AI.supervisor_workflow.shared.models.Nodes import NodeNames_HQ
 from app.AI.supervisor_workflow.shared.models.Chat import SupervisorStatus
 from app.utils.logger import logger
+from app.AI.supervisor_workflow.shared.models.stream_models import StreamPublisher
 
 
 llm = LLMFactory.create_llm(
@@ -77,25 +78,55 @@ Provide a direct, natural response to the user:"""
     return prompt
 
 
-async def call_llm_for_aggregation(llm: BaseChatModel, prompt: str) -> str:
+async def call_llm_for_aggregation(llm: BaseChatModel, prompt: str, publisher: StreamPublisher, state: ChatState) -> str:
     """
-    Calls the LLM to generate the final aggregated response.
+    Calls the LLM to generate the final aggregated response with simple streaming.
+    Only sends initial signal and completion marker.
     """
     try:
-        response_chunks = ""
-        writer = get_stream_writer()
+        # Send initial signal
+        initial_signal = "Finalizing response..."
+        logger.info("Streaming initial signal from Aggregator")
 
+        if publisher is not None:
+            await publisher.publish_thought(
+                content=initial_signal,
+                source=NodeNames_HQ.AGGREGATOR.value,
+                segment_id=1
+            )
+
+        # Get the full response
+        full_response = ""
         async for chunk in llm.astream(prompt):
-            writer({"final_output": chunk.content})
             if hasattr(chunk, 'content') and chunk.content:
                 chunk_text = str(chunk.content) if chunk.content else ""
-                response_chunks = response_chunks + chunk_text
+                full_response += chunk_text
 
-        return response_chunks
+        # Send completion marker after successful generation
+        if publisher is not None:
+            await publisher.publish_thought_complete(
+                source=NodeNames_HQ.AGGREGATOR.value,
+                segment_id=1,
+                total_length=len(full_response),
+                content="Done"
+            )
+            logger.info(f"Aggregator completed successfully: {len(full_response)} characters generated")
+
+        return full_response
     except Exception as e:
         logger.error(f"LLM call failed in aggregator: {e}")
         # Fallback response if LLM fails
-        return f"I apologize, but I encountered an error while generating the final response. However, I was able to process your request through multiple departments. Please try again or contact support if the issue persists."
+        fallback_response = f"I apologize, but I encountered an error while generating the final response. However, I was able to process your request through multiple departments. Please try again or contact support if the issue persists."
+
+        # Send completion marker for fallback response too
+        if publisher is not None:
+            await publisher.publish_thought_complete(
+                source=NodeNames_HQ.AGGREGATOR.value,
+                segment_id=1,
+                total_length=len(fallback_response)
+            )
+
+        return fallback_response
 
 
 async def aggregator_node(state: ChatState) -> Command:
@@ -106,7 +137,7 @@ async def aggregator_node(state: ChatState) -> Command:
     1. Collects all completed tasks and their results
     2. Gathers any errors that occurred
     3. Creates a comprehensive prompt for the LLM
-    4. Generates a final synthesized response
+    4. Generates a final synthesized response with simple streaming (initial + completion)
     5. Updates the final_output and completes the workflow
     """
 
@@ -116,13 +147,16 @@ async def aggregator_node(state: ChatState) -> Command:
 
     new_updates: Dict[str, Any] = {}
 
+    # Get publisher for streaming
+    publisher = state.get_stream_publisher()
+
     try:
         # Create the aggregation prompt
         prompt = create_aggregation_prompt(state)
-        logger.info(f"!! Aggregation prompt created !!")
+        # logger.info(f"!! Aggregation prompt created !!")
 
-        # Call LLM for final response generation
-        final_response = await call_llm_for_aggregation(llm, prompt)
+        # Call LLM for final response generation with simple streaming
+        final_response = await call_llm_for_aggregation(llm, prompt, publisher, state)
 
         # Update the final output
         new_updates["final_output"] = final_response
@@ -130,13 +164,7 @@ async def aggregator_node(state: ChatState) -> Command:
         # Add the final response to messages
         new_updates["messages"] = [AIMessage(content=final_response, id=str(uuid.uuid4()))]
 
-        # Update supervisor status to completed
-        new_updates["supervisor"] = state.supervisor.model_copy(update={
-            "supervisor_status": SupervisorStatus.COMPLETED
-        })
-
-        logger.info(f"!! Aggregation completed successfully !!")
-        logger.info(f"!!  !!")
+        # logger.info(f"!! Aggregation completed successfully !!")
 
         return Command(
             update=new_updates,
@@ -151,13 +179,17 @@ async def aggregator_node(state: ChatState) -> Command:
 
         fallback_response = "I apologize, but I encountered an error while generating the final response. Please try again."
 
+        # Send completion marker for error case
+        if publisher:
+            await publisher.publish_thought_complete(
+                source=NodeNames_HQ.AGGREGATOR.value,
+                segment_id=1,
+                total_length=len(fallback_response)
+            )
+
         new_updates["final_output"] = fallback_response
         new_updates["errors"] = [new_error]
         new_updates["messages"] = [AIMessage(content=fallback_response, id=str(uuid.uuid4()))]
-        new_updates["supervisor"] = state.supervisor.model_copy(update={
-            "supervisor_status": SupervisorStatus.FAILED
-        })
-
 
         return Command(
             update=new_updates,

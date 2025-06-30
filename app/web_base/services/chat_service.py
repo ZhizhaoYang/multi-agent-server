@@ -46,15 +46,7 @@ class ChatService:
             stream_queue_id=queue_id
         )
 
-    async def _get_final_state(self, config: RunnableConfig) -> str:
-        """Get the final state after graph completion"""
-        try:
-            main_graph = self._get_main_graph()
-            final_state = await main_graph.aget_state(config)
-            return final_state.values.get("final_output", "")
-        except Exception as e:
-            logger.error(f"Error getting final state: {e}")
-            return ""
+
 
     async def _create_queue_events(self, stream_consumer) -> AsyncGenerator[tuple[str, str], None]:
         """Generate events from the queue consumer"""
@@ -149,10 +141,8 @@ class ChatService:
                     logger.error(f"Error getting event from internal queue: {e}")
                     break
 
-            # Send final result using converter
-            final_output = await self._get_final_state(config)
-            final_message = self.event_converter.format_final_result(self.thread_id, final_output)
-            yield final_message
+            # Final result is now streamed directly by the final response node
+            # No need to send it here as it's handled by final_output events
 
         except Exception as e:
             logger.error(f"Error in chat service: {e}")

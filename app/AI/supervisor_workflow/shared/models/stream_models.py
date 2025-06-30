@@ -9,7 +9,7 @@ class StreamEvent(BaseModel):
     """
     Event model for streaming thoughts and updates between subgraphs and main graph.
     """
-    event_type: Literal["thought", "thought_complete", "progress", "error", "result"] = Field(
+    event_type: Literal["thought", "thought_complete", "progress", "error", "result", "final_output", "final_output_complete"] = Field(
         ..., description="Type of the stream event"
     )
     source: str = Field(..., description="Source department or node name")
@@ -82,7 +82,7 @@ class StreamPublisher:
         )
         await self.publish(event)
 
-    async def publish_thought_complete(self, source: str, segment_id: int, total_length: Optional[int] = None):
+    async def publish_thought_complete(self, source: str, segment_id: int, total_length: Optional[int] = None, content: str = ""):
         """
         Convenience method to publish thought completion.
 
@@ -104,24 +104,43 @@ class StreamPublisher:
         )
         await self.publish(event)
 
-    async def publish_progress(self, content: str, source: str, progress_percent: float):
+    async def publish_final_output(self, content: str, segment_id: int, metadata: Optional[Dict[str, Any]] = None):
         """
-        Convenience method to publish progress updates.
+        Convenience method to publish final output content.
 
         Args:
-            content: Progress description
-            source: Source department name
-            progress_percent: Progress percentage (0-100)
+            content: The final output content
+            segment_id: Sequential segment ID
+            metadata: Optional metadata
         """
         event = StreamEvent(
-            event_type="progress",
-            source=source,
+            event_type="final_output",
+            source="FinalResponse",
             content=content,
-            segment_id=0,  # Progress events don't need segment ordering
-            metadata={"progress_percent": progress_percent}
+            segment_id=segment_id,
+            metadata=metadata or {}
         )
         await self.publish(event)
 
+    async def publish_final_output_complete(self, total_length: Optional[int] = None):
+        """
+        Convenience method to publish final output completion.
+
+        Args:
+            total_length: Total number of characters/segments
+        """
+        metadata = {}
+        if total_length is not None:
+            metadata["total_length"] = total_length
+
+        event = StreamEvent(
+            event_type="final_output_complete",
+            source="FinalResponse",
+            content="",
+            segment_id=0,
+            metadata=metadata
+        )
+        await self.publish(event)
 
 class StreamConsumer:
     """

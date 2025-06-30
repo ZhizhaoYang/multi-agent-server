@@ -95,7 +95,7 @@ class ChatState(BaseModel):
         description="Errors that occurred during processing"
     )
 
-    stream_queue_id: Optional[str] = Field(
+    stream_queue_id: Annotated[Optional[str], latest_value_reducer] = Field(
         default=None,
         description="ID of the stream queue for this chat session"
     )
