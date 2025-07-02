@@ -25,10 +25,10 @@ class ChatService:
         # Use lightweight event converter
         self.event_converter = StreamEventConverter
 
-    def _get_main_graph(self):
-        """Lazy import of main_graph to avoid initialization issues"""
-        from app.AI.supervisor_workflow.head_quarter import main_graph
-        return main_graph
+    async def _get_main_graph(self):
+        """Lazy import of main_graph with PostgreSQL checkpointer"""
+        from app.AI.supervisor_workflow.head_quarter.main_graph import get_main_graph_with_checkpointer
+        return await get_main_graph_with_checkpointer()
 
     def _create_config(self) -> RunnableConfig:
         """Create the configuration for the graph execution"""
@@ -91,7 +91,7 @@ class ChatService:
         # Setup configuration and input data
         config = self._create_config()
         input_data = self._create_input_data(queue_id)
-        graph = self._get_main_graph()
+        graph = await self._get_main_graph()
 
         # Service layer controls event merging
         internal_queue = asyncio.Queue()
