@@ -55,7 +55,7 @@ async def get_main_graph_with_checkpointer():
     global _main_graph_with_checkpointer, _graph_initialized
 
     if not _graph_initialized:
-        if ENV == "dev" and DATABASE_URL:
+        if ENV == "production" and DATABASE_URL:
             try:
                 # Create PostgreSQL checkpointer
                 checkpointer_cm = AsyncPostgresSaver.from_conn_string(DATABASE_URL)

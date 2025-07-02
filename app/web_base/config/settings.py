@@ -1,10 +1,12 @@
 from pydantic_settings import BaseSettings
 
+import os
+ENV = os.environ.get("ENV", "dev")
+
 class Settings(BaseSettings):
-    ENV: str = "dev"
+    ENV: str = ENV
     LLM_API_KEY: str | None = None
     VERSION: str = "0.1.0"
-    # DB_URL: str = "sqlite:///./chatbot.db"
 
     class Config:
         env_file = ".env"
