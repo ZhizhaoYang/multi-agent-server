@@ -47,7 +47,6 @@ async def final_response_node(state: ChatState) -> Command:
     try:
         # Stream the final output directly as response content
         await stream_final_output_directly(state.final_output, publisher)
-
         logger.info(f"!! Final output streaming completed successfully !!")
 
         return Command(

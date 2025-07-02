@@ -31,8 +31,8 @@ AVAILABLE_DEPARTMENTS_STRING: str = conver_registered_dept_str()
 
 llm = LLMFactory.create_llm(
     LLMConfig(
-        provider=LLMProviders.DEEPSEEK.value,
-        model="deepseek-chat",
+        provider=LLMProviders.OPENAI.value,
+        model="gpt-4.1",
         temperature=1.0,
         model_kwargs={
             "response_format": {

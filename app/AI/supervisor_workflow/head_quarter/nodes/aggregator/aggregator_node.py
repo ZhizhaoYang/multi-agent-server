@@ -15,8 +15,8 @@ from app.AI.supervisor_workflow.shared.models.stream_models import StreamPublish
 
 llm = LLMFactory.create_llm(
     LLMConfig(
-        provider=LLMProviders.DEEPSEEK.value,
-        model="deepseek-chat",
+        provider=LLMProviders.OPENAI.value,
+        model="gpt-4.1-mini",
         temperature=1.0,
     )
 )

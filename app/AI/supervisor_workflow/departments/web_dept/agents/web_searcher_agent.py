@@ -6,11 +6,12 @@ from app.AI.core.llm import LLMFactory, LLMConfig, LLMProviders
 
 llm = LLMFactory.create_llm(
     LLMConfig(
-        provider=LLMProviders.DEEPSEEK.value,
-        model="deepseek-chat",
+        provider=LLMProviders.OPENAI.value,
+        model="gpt-4.1",
         temperature=1.0,
     )
 )
+
 
 def create_web_search_prompt(description: str, expected_output: str) -> str:
     """
@@ -35,6 +36,7 @@ Explanation of the expected output:
 {expected_output}
 
 Use your search tools to find relevant information and provide a comprehensive answer based on your search results."""
+
 
 def create_web_searcher_agent(description: str, expected_output: str):
     """

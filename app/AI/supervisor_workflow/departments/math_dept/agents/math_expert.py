@@ -6,8 +6,8 @@ from app.AI.supervisor_workflow.departments.math_dept.tools.calculator import ca
 
 llm = LLMFactory.create_llm(
     LLMConfig(
-        provider=LLMProviders.DEEPSEEK.value,
-        model="deepseek-chat",
+        provider=LLMProviders.OPENAI.value,
+        model="gpt-4.1-nano",
         temperature=1.0,
     )
 )

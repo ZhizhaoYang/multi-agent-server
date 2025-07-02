@@ -1,10 +1,9 @@
 from langgraph.types import Command
 import asyncio
 
-from langchain_core.messages import SystemMessage, HumanMessage, AnyMessage
+from langchain_core.messages import SystemMessage, AnyMessage
 
 from app.AI.supervisor_workflow.shared.models import CompletedTask, TaskStatus, NodeNames_Dept
-from app.AI.supervisor_workflow.shared.models.Chat import SupervisorState
 from app.AI.core.llm import LLMFactory, LLMConfig, LLMProviders
 from app.AI.supervisor_workflow.shared.utils.logUtils import print_current_node
 from app.AI.supervisor_workflow.departments.utils.errors import node_error_handler
@@ -43,14 +42,13 @@ async def stream_knowledge_response(response_text: str, department: str, publish
 async def _call_general_knowledge_llm(dept_input: DeptInput) -> str:
     """Call the LLM and return the response content as a string"""
     task = dept_input.task
-    supervisor = dept_input.supervisor
 
     try:
         llm = LLMFactory.create_llm(
             LLMConfig(
-                provider=LLMProviders.DEEPSEEK.value,
-                model="deepseek-chat",
-                temperature=0.5,
+                provider=LLMProviders.OPENAI.value,
+                model="gpt-4.1-nano",
+                temperature=1.0,
             )
         )
 
