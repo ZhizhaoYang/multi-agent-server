@@ -2,10 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies and uv
+# Install system dependencies, PostgreSQL client libraries, and uv
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
+    libpq-dev \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/* \
     && pip install uv
 
