@@ -20,6 +20,7 @@ dependencies = [
     "langchain-mcp-adapters>=0.0.9",
     "langchain-tavily>=0.2.2",
     "langgraph>=0.4.1",
+    "langgraph-checkpoint-postgres>=2.0.21",
     "langgraph-checkpoint-sqlite>=2.0.10",
     "langgraph-cli>=0.3.3",
     "markdown>=3.8",
