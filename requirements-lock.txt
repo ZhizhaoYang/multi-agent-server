@@ -62,7 +62,6 @@ marshmallow==3.26.1
 matplotlib-inline==0.1.7
 mcp==1.9.4
 mdurl==0.1.2
--e file:///Users/yangzhizhao/Desktop/%E6%88%91%E7%9A%84%E5%B7%A5%E5%9C%B0/my-AI/multi-agent-app/multi-agent-server
 multidict==6.5.0
 mypy==1.16.1
 mypy-extensions==1.1.0

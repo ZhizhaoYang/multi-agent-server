@@ -22,8 +22,9 @@ env/
 *.swp
 *.swo
 
-# Lock files
-*.lock
+# Lock files (but keep uv.lock for reproducible builds)
+# *.lock
+# Note: uv.lock should be committed for reproducible builds
 
 # OS specific files
 .DS_Store
