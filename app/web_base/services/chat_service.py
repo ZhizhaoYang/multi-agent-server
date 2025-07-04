@@ -32,12 +32,18 @@ class ChatService:
 
     def _create_config(self) -> RunnableConfig:
         """Create the configuration for the graph execution"""
-        return {
-            "configurable": {
+        return RunnableConfig(
+            configurable={
                 "thread_id": self.thread_id,
-                "user_context": self.user_context,
+                 "user_context": self.user_context,
             }
-        }
+        )
+        # return {
+        #     "configurable": {
+        #         "thread_id": self.thread_id,
+        #         "user_context": self.user_context,
+        #     }
+        # }
 
     def _create_input_data(self, queue_id: str) -> ChatState:
         """Create the input data for the graph"""
@@ -45,7 +51,6 @@ class ChatService:
             user_query=self.user_query,
             stream_queue_id=queue_id
         )
-
 
 
     async def _create_queue_events(self, stream_consumer) -> AsyncGenerator[tuple[str, str], None]:
