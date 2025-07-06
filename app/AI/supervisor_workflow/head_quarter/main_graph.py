@@ -14,7 +14,7 @@ from app.AI.supervisor_workflow.head_quarter.dept_registry_center import departm
 ENV = os.environ.get("ENV", "dev")
 
 # Supabase PostgreSQL connection configuration
-DATABASE_URL = os.environ.get("SUPABASE_DB_URL")
+DATABASE_URL = os.environ.get("RENDER_DB_URL")
 
 AVAILABLE_DEPT_MAP: Dict[str, Runnable] = department_registry.get_available_departments_func_map()
 
