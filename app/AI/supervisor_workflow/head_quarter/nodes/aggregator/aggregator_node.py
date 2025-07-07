@@ -17,7 +17,7 @@ llm = LLMFactory.create_llm(
     LLMConfig(
         provider=LLMProviders.OPENAI.value,
         model="gpt-4.1-mini",
-        temperature=1.0,
+        temperature=0.3,
     )
 )
 CURRENT_NODE_NAME = NodeNames_HQ.AGGREGATOR.value
@@ -50,30 +50,31 @@ Department: {completed_task.from_department.value}
 Status: {completed_task.status.value}
 Department Response: {completed_task.department_output if completed_task.department_output else 'No response provided'}
 """
-    completed_tasks_summary.append(task_info.strip())
+            completed_tasks_summary.append(task_info.strip())
 
     user_query = state.user_query
     newline = '\n'
 
-    prompt = f"""You are a helpful AI assistant. The user asked you a question and you have gathered the necessary information to respond.
+    prompt = f"""You are a helpful AI assistant. The user asked you a question and your specialized departments have gathered information to help answer it.
 
 USER'S QUESTION:
 {user_query}
 
-AVAILABLE INFORMATION:
-{newline.join(completed_tasks_summary) if completed_tasks_summary else "No additional information available."}
+DEPARTMENT RESEARCH RESULTS:
+{newline.join(completed_tasks_summary) if completed_tasks_summary else "No additional information was gathered."}
 
-INSTRUCTIONS:
-1. Respond directly and naturally to the user's question as if you are a single AI assistant
-2. Use the available information to provide a helpful answer
-3. DO NOT mention any internal processes, tasks, departments, or technical details
-4. DO NOT reference "completing tasks" or "processing" or "synthesis"
-5. If the information contains obvious error messages (like API errors), ignore those parts
-6. For simple questions like greetings, respond naturally without over-explaining
-7. Make your response feel conversational and human-like
-8. Focus only on what the user actually wants to know
+CRITICAL INSTRUCTIONS:
+1. **MANDATORY**: You MUST use ALL factual information provided by the departments in your response
+2. **Web Department Results**: If the WebDepartment provided search results or real-time data (weather, news, etc.), you MUST include this information in your response
+3. **Math Department Results**: If the MathDepartment provided calculations, you MUST use their exact numerical results
+4. **General Knowledge Results**: Use conversational responses from the GeneralKnowledge department
+5. **DO NOT IGNORE department outputs** - every successful department result should be reflected in your final answer
+6. **DO NOT say "I don't have access"** if any department provided relevant information
+7. **BE COMPREHENSIVE**: Address all parts of the user's question using the available research results
+8. Respond naturally as a single AI assistant - don't mention departments or internal processes
+9. Be conversational and helpful while being thorough
 
-Provide a direct, natural response to the user:"""
+Provide a complete answer that incorporates ALL available research results:"""
 
     return prompt
 
@@ -92,7 +93,7 @@ async def call_llm_for_aggregation(llm: BaseChatModel, prompt: str, publisher: S
             await publisher.publish_thought(
                 content=initial_signal,
                 source=NodeNames_HQ.AGGREGATOR.value,
-                segment_id=1
+                segment_id=0
             )
 
         # Get the full response
@@ -153,7 +154,6 @@ async def aggregator_node(state: ChatState) -> Command:
     try:
         # Create the aggregation prompt
         prompt = create_aggregation_prompt(state)
-        # logger.info(f"!! Aggregation prompt created !!")
 
         # Call LLM for final response generation with simple streaming
         final_response = await call_llm_for_aggregation(llm, prompt, publisher, state)
@@ -175,7 +175,7 @@ async def aggregator_node(state: ChatState) -> Command:
         logger.error(f"!! Aggregator node error: {e} !!")
 
         # Build error and fallback response
-        new_error = state.build_error(e, CURRENT_NODE_NAME)
+        new_error = state.build_error(e, str(CURRENT_NODE_NAME))
 
         fallback_response = "I apologize, but I encountered an error while generating the final response. Please try again."
 

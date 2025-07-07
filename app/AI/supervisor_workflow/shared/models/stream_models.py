@@ -15,6 +15,7 @@ class StreamEvent(BaseModel):
     source: str = Field(..., description="Source department or node name")
     content: str = Field(..., description="The actual content/message")
     segment_id: int = Field(..., description="Sequential ID for ordering events")
+    task_id: Optional[str] = Field(default=None, description="Task ID to distinguish multiple tasks from same department")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Event timestamp")
 
@@ -25,6 +26,7 @@ class StreamEvent(BaseModel):
             "source": self.source,
             "content": self.content,
             "segment_id": self.segment_id,
+            "task_id": self.task_id,
             "metadata": self.metadata,
             "timestamp": self.timestamp.isoformat()
         }
@@ -59,11 +61,11 @@ class StreamPublisher:
 
         try:
             await self.queue_manager.put_event(self.queue_id, event.to_dict())
-            logger.debug(f"Published event: {event.event_type} from {event.source}")
+            logger.debug(f"Published event: {event.event_type} from {event.source} (task: {event.task_id})")
         except Exception as e:
             logger.error(f"Failed to publish stream event: {e}")
 
-    async def publish_thought(self, content: str, source: str, segment_id: int, metadata: Optional[Dict[str, Any]] = None):
+    async def publish_thought(self, content: str, source: str, segment_id: int, task_id: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None):
         """
         Convenience method to publish a thought event.
 
@@ -71,6 +73,7 @@ class StreamPublisher:
             content: The thought content
             source: Source department name
             segment_id: Sequential segment ID
+            task_id: Task ID to distinguish multiple tasks from same department (optional)
             metadata: Optional metadata
         """
         event = StreamEvent(
@@ -78,17 +81,19 @@ class StreamPublisher:
             source=source,
             content=content,
             segment_id=segment_id,
+            task_id=task_id,
             metadata=metadata or {}
         )
         await self.publish(event)
 
-    async def publish_thought_complete(self, source: str, segment_id: int, total_length: Optional[int] = None, content: str = ""):
+    async def publish_thought_complete(self, source: str, segment_id: int, task_id: Optional[str] = None, total_length: Optional[int] = None, content: str = ""):
         """
         Convenience method to publish thought completion.
 
         Args:
             source: Source department name
             segment_id: Final segment ID
+            task_id: Task ID to distinguish multiple tasks from same department (optional)
             total_length: Total number of characters/segments
         """
         metadata = {}
@@ -100,6 +105,7 @@ class StreamPublisher:
             source=source,
             content="",
             segment_id=segment_id,
+            task_id=task_id,
             metadata=metadata
         )
         await self.publish(event)
@@ -118,6 +124,7 @@ class StreamPublisher:
             source="FinalResponse",
             content=content,
             segment_id=segment_id,
+            task_id=None,  # Final output doesn't have task_id
             metadata=metadata or {}
         )
         await self.publish(event)
@@ -138,6 +145,7 @@ class StreamPublisher:
             source="FinalResponse",
             content="",
             segment_id=0,
+            task_id=None,  # Final output doesn't have task_id
             metadata=metadata
         )
         await self.publish(event)

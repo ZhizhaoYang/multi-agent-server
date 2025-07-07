@@ -15,7 +15,7 @@ from app.utils.logger import logger
 CURRENT_NODE_NAME = NodeNames_Dept.WEB_DEPT.value
 
 
-async def stream_web_search_response(response_text: str, department: str, publisher):
+async def stream_web_search_response(response_text: str, department: str, task_id: str, publisher):
     """Stream the web search response character by character using queue-based system"""
     try:
         if publisher is not None:
@@ -24,7 +24,8 @@ async def stream_web_search_response(response_text: str, department: str, publis
                 await publisher.publish_thought(
                     content=char,
                     source=department,
-                    segment_id=char_position
+                    segment_id=char_position,
+                    task_id=task_id
                 )
                 await asyncio.sleep(0.01)  # Small delay between characters
 
@@ -32,10 +33,11 @@ async def stream_web_search_response(response_text: str, department: str, publis
             await publisher.publish_thought_complete(
                 source=department,
                 segment_id=len(response_text),
+                task_id=task_id,
                 total_length=len(response_text)
             )
 
-            logger.info(f"Streamed web search response: {len(response_text)} characters total")
+            logger.info(f"Streamed web search response: {len(response_text)} characters total (task: {task_id})")
     except Exception as e:
         logger.error(f"Warning: Could not stream web search response: {e}")
 
@@ -87,7 +89,8 @@ async def web_searcher_node(dept_input: DeptInput):
         await publisher.publish_thought(
             content=initial_signal,
             source=NodeNames_Dept.WEB_DEPT.value,
-            segment_id=1
+            segment_id=0,
+            task_id=task.task_id
         )
         await asyncio.sleep(0.01)
 
@@ -103,6 +106,7 @@ async def web_searcher_node(dept_input: DeptInput):
     await stream_web_search_response(
         response_text=response_content,
         department="WebDepartment",
+        task_id=task.task_id,
         publisher=publisher
     )
 

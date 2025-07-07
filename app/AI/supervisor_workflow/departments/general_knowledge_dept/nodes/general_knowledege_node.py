@@ -13,7 +13,7 @@ from app.utils.logger import logger
 CURRENT_NODE_NAME = NodeNames_Dept.GENERAL_KNOWLEDGE.value
 
 
-async def stream_knowledge_response(response_text: str, department: str, publisher):
+async def stream_knowledge_response(response_text: str, department: str, task_id: str, publisher):
     """Stream the knowledge response character by character using queue-based system"""
     try:
         if publisher is not None:
@@ -22,7 +22,8 @@ async def stream_knowledge_response(response_text: str, department: str, publish
                 await publisher.publish_thought(
                     content=char,
                     source=department,
-                    segment_id=char_position
+                    segment_id=char_position,
+                    task_id=task_id
                 )
                 await asyncio.sleep(0.01)  # Small delay between characters
 
@@ -30,10 +31,11 @@ async def stream_knowledge_response(response_text: str, department: str, publish
             await publisher.publish_thought_complete(
                 source=department,
                 segment_id=len(response_text),
+                task_id=task_id,
                 total_length=len(response_text)
             )
 
-            logger.info(f"Streamed knowledge response: {len(response_text)} characters total")
+            logger.info(f"Streamed knowledge response: {len(response_text)} characters total (task: {task_id})")
     except Exception as e:
         logger.error(f"Warning: Could not stream knowledge response: {e}")
 
@@ -53,10 +55,12 @@ async def _call_general_knowledge_llm(dept_input: DeptInput) -> str:
         )
 
         system_prompt = (
-            "You are a friendly and helpful general-purpose assistant. "
+            "You are a friendly and helpful AI assistant that coordinates multiple specialized departments to help users. "
+            "Your name is 'Assistant' and you should identify yourself as an AI assistant, not by any specific model name. "
             "Your role is to answer user queries that do not fall into specialized categories. "
             "You will be given a user's intention and a description of the expected output. "
-            "Based on this information, please provide a direct and clear response."
+            "Based on this information, please provide a direct and clear response. "
+            "When asked about your name or identity, refer to yourself as 'Assistant' or simply 'an AI assistant' - do not mention specific model names."
         )
 
         user_message = f"Task Description: {task.description}\n\nExpected Output Explanation: {task.expected_output}"
@@ -101,7 +105,8 @@ async def general_knowledge_node(dept_input: DeptInput) -> Command:
         await publisher.publish_thought(
             content=initial_signal,
             source=NodeNames_Dept.GENERAL_KNOWLEDGE.value,
-            segment_id=1
+            segment_id=0,
+            task_id=task.task_id
         )
         await asyncio.sleep(0.01)
 
@@ -112,6 +117,7 @@ async def general_knowledge_node(dept_input: DeptInput) -> Command:
     await stream_knowledge_response(
         response_text=llm_response,
         department=NodeNames_Dept.GENERAL_KNOWLEDGE.value,
+        task_id=task.task_id,
         publisher=publisher
     )
 

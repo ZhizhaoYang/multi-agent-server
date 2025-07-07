@@ -53,7 +53,7 @@ async def stream_task_dispatch(tasks: List[Task], publisher):
             await publisher.publish_thought(
                 content="Planning tasks...",
                 source="Supervisor",
-                segment_id=1
+                segment_id=0
             )
             await asyncio.sleep(0.01)
 
@@ -143,14 +143,17 @@ async def handle_task_dispatch(state: ChatState) -> Command:
 def handle_task_completion(state: ChatState) -> Command | None:
     new_updates: Dict[str, Any] = {}
 
-    logger.info(f"!! Supervisor node handle_task_completion ---")
+
+
+
 
     # check if supervisor is pending, if pending, just return None, keep waiting
     if state.supervisor.supervisor_status != SupervisorStatus.PENDING:
         return None
 
     # check if all tasks are completed, else return None, keep waiting
-    if state.supervisor.dispatched_task_ids - state.supervisor.completed_task_ids != set():
+    pending_tasks = state.supervisor.dispatched_task_ids - state.supervisor.completed_task_ids
+    if pending_tasks != set():
         return None
 
     # Update supervisor state to mark completion phase
