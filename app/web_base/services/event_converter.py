@@ -21,6 +21,7 @@ class StreamEventConverter:
                 'thought',
                 source=event.source,
                 segment_id=event.segment_id,
+                task_id=event.task_id,
                 timestamp=event.timestamp.isoformat() if hasattr(event.timestamp, 'isoformat') else str(event.timestamp)
             ),
             "thought_complete": lambda: cls.format_sse_message(
@@ -28,6 +29,7 @@ class StreamEventConverter:
                 'thought_complete',
                 source=event.source,
                 segment_id=event.segment_id,
+                task_id=event.task_id,
                 total_length=event.metadata.get('total_length', 0)
             ),
             "final_output": lambda: cls.format_sse_message(
@@ -62,6 +64,7 @@ class StreamEventConverter:
                     'thought',
                     source=stream_content.get('source', ''),
                     segment_id=stream_content.get('segment_id', 0),
+                    task_id=stream_content.get('task_id'),
                     timestamp=stream_content.get('timestamp', '')
                 )
         elif message_type == 'thought_complete':
@@ -70,6 +73,7 @@ class StreamEventConverter:
                 'thought_complete',
                 source=stream_content.get('source', ''),
                 segment_id=stream_content.get('segment_id', 0),
+                task_id=stream_content.get('task_id'),
                 total_length=stream_content.get('total_length', 0)
             )
         elif message_type == 'final_output':

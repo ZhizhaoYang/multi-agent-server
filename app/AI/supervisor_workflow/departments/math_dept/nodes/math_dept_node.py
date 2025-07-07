@@ -42,7 +42,7 @@ def concatenate_thoughts_with_markers(thoughts: dict) -> str:
 
     return "\n\n".join(concatenated_parts)
 
-async def stream_concatenated_thoughts(full_text: str, department: str, publisher):
+async def stream_concatenated_thoughts(full_text: str, department: str, task_id: str, publisher):
     """Stream the full concatenated thought text character by character using the new queue-based system"""
     try:
         if publisher is not None:
@@ -51,7 +51,8 @@ async def stream_concatenated_thoughts(full_text: str, department: str, publishe
                 await publisher.publish_thought(
                     content=char,
                     source=department,
-                    segment_id=char_position
+                    segment_id=char_position,
+                    task_id=task_id
                 )
                 await asyncio.sleep(0.01)  # Small delay between characters
 
@@ -59,10 +60,11 @@ async def stream_concatenated_thoughts(full_text: str, department: str, publishe
             await publisher.publish_thought_complete(
                 source=department,
                 segment_id=len(full_text),
+                task_id=task_id,
                 total_length=len(full_text)
             )
 
-            logger.info(f"Streamed concatenated thoughts: {len(full_text)} characters total")
+            logger.info(f"Streamed concatenated thoughts: {len(full_text)} characters total (task: {task_id})")
     except Exception as e:
         logger.error(f"Warning: Could not stream concatenated thoughts: {e}")
 
@@ -123,7 +125,8 @@ async def math_dept_node(state: DeptInput) -> Command:
         await publisher.publish_thought(
             content=initial_signal,
             source=NodeNames_Dept.MATH_DEPT.value,
-            segment_id=1
+            segment_id=0,
+            task_id=task.task_id
         )
         await asyncio.sleep(0.01)
 
@@ -188,10 +191,11 @@ Remember to use the calculator tool for all numerical computations and ensure va
                 concatenated_thoughts = concatenate_thoughts_with_markers(thoughts)
                 logger.info(f"Concatenated thoughts length: {len(concatenated_thoughts)} characters")
 
-                # Stream the concatenated text character by character
+                # Stream the thoughts using the concatenated format
                 await stream_concatenated_thoughts(
                     full_text=concatenated_thoughts + "\n\n" + final_result,
                     department="MathDepartment",
+                    task_id=task.task_id,
                     publisher=publisher
                 )
             else:
@@ -211,6 +215,7 @@ Remember to use the calculator tool for all numerical computations and ensure va
             await stream_concatenated_thoughts(
                 full_text=fallback_text,
                 department="MathDepartment",
+                task_id=task.task_id,
                 publisher=publisher
             )
 
@@ -222,6 +227,7 @@ Remember to use the calculator tool for all numerical computations and ensure va
         await stream_concatenated_thoughts(
             full_text=error_text,
             department="MathDepartment",
+            task_id=task.task_id,
             publisher=publisher
         )
 

@@ -114,7 +114,7 @@ async def assessment_node(state: ChatState, config: RunnableConfig) -> Command:
         await publisher.publish_thought(
             content="Generating assessment report...",
             source=NodeNames_HQ.ASSESSMENT.value,
-            segment_id=1
+            segment_id=0
         )
         await asyncio.sleep(0.01)
 
