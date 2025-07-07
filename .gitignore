@@ -22,9 +22,6 @@ env/
 *.swp
 *.swo
 
-# Lock files
-*.lock
-
 # OS specific files
 .DS_Store
 Thumbs.db
