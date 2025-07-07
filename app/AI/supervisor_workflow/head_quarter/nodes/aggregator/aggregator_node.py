@@ -50,7 +50,7 @@ Department: {completed_task.from_department.value}
 Status: {completed_task.status.value}
 Department Response: {completed_task.department_output if completed_task.department_output else 'No response provided'}
 """
-            completed_tasks_summary.append(task_info.strip())
+    completed_tasks_summary.append(task_info.strip())
 
     user_query = state.user_query
     newline = '\n'
