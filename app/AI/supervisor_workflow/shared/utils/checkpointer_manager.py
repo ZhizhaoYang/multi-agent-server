@@ -112,7 +112,7 @@ async def get_best_checkpointer() -> Optional[BaseCheckpointSaver]:
             print(f"⚠️ Failed to initialize PostgreSQL checkpointer: {e}")
 
     # Try SQLite fallback
-    if HAS_SQLITE:
+    if ENV == "dev" or HAS_SQLITE:
         try:
             checkpointer = await _checkpointer_manager.get_sqlite_checkpointer()
             if checkpointer:
