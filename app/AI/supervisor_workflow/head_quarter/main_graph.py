@@ -1,7 +1,6 @@
 from langgraph.graph import StateGraph, START, END
 from typing import Dict
 from langchain_core.runnables.base import Runnable
-
 from app.AI.supervisor_workflow.shared.models import ChatState
 from app.AI.supervisor_workflow.head_quarter.nodes import (
     assessment_node,
