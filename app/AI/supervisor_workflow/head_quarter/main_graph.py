@@ -3,16 +3,13 @@ from typing import Dict
 from langchain_core.runnables.base import Runnable
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 import os
-import asyncpg
-import asyncio
-
 from app.AI.supervisor_workflow.shared.models import ChatState
 from app.AI.supervisor_workflow.head_quarter.nodes import assessment_node, supervisor_node, aggregator_node, final_response_node, initializer_node
 from app.AI.supervisor_workflow.shared.models.Nodes import NodeNames_HQ
 from app.AI.supervisor_workflow.head_quarter.dept_registry_center import department_registry
 
 ENV = os.environ.get("ENV", "dev")
-
+print(f" ==== ENV ====: {ENV}")
 # Supabase PostgreSQL connection configuration
 DATABASE_URL = os.environ.get("SUPABASE_DB_URL")
 
