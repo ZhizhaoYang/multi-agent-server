@@ -6,6 +6,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "aenum>=3.1.16",
+<<<<<<< HEAD
+=======
+    "aiosqlite>=0.20.0",
+>>>>>>> dev
     "asyncpg>=0.30.0",
     "bs4>=0.0.2",
     "fastapi>=0.115.12",
@@ -31,3 +35,12 @@ dependencies = [
     "tenacity>=9.1.2",
     "uvicorn[standard]>=0.34.2",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["db*", "*.egg-info*", "__pycache__*"]
