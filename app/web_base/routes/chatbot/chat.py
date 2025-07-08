@@ -38,8 +38,8 @@ class SSEMessage:
 #     )
 
 
-@router.post("/chat-test", status_code=200)
-async def chat_test_handler(request: APIRequest):
+@router.post("/chat-stream", status_code=200)
+async def chat_stream_handler(request: APIRequest):
     """Main chat endpoint with conversation history support"""
     chat_service = ChatService(request)
 

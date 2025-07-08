@@ -22,5 +22,5 @@ make run
 
 ## API
 
-- `POST /chat` - Send messages to the AI system
-- `GET /stream` - Server-sent events for real-time responses
+- `POST /chat-stream` - Send messages to the AI system
+- `DELETE /clear-history` - Clear all conversation history from SQLite database
