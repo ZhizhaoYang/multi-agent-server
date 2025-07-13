@@ -15,6 +15,7 @@ async def wake_up_service():
     Returns immediately to prevent cold starts.
     """
     return {
+        "success": True,
         "status": "awake",
         "message": "Service is warm and ready"
     }
@@ -25,4 +26,7 @@ async def ping():
     """
     Ultra-simple ping endpoint.
     """
-    return {"status": "pong"}
+    return {
+        "success": True,
+        "status": "pong"
+    }
